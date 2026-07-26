@@ -92,14 +92,14 @@ npm install @qobly/microscope-client  # TypeScript / JavaScript
 from microscope_client import MicroscopeClient
 
 client = MicroscopeClient(base_url="http://localhost:8093/microscope")
-client.record("payment_charged", tags=["billing"], content={"amount": 4200})
+client.record("payment_charged", content={"amount": 4200})
 ```
 
 ```ts
 import { MicroscopeClient } from "@qobly/microscope-client";
 
 const client = new MicroscopeClient({ baseUrl: "http://localhost:8093/microscope" });
-await client.record("payment_charged", { tags: ["billing"], content: { amount: 4200 } });
+await client.record("payment_charged", { amount: 4200 });
 ```
 
 See `sdk/python/README.md` and `sdk/typescript/README.md` for full SDK docs.
