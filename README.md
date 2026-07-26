@@ -9,11 +9,15 @@ by the Go core.
 
 - **Go core** (repo root, module `github.com/qobly/microscope`): the hub, storage, HTTP API,
   and embedded UI. Import it directly in a Go service, or run it standalone via `cmd/server`.
-- **`sdk/python`**: pip package (`microscope-client`), a thin HTTP client for the same API.
-- **`sdk/typescript`**: npm package (`@qobly/microscope-client`), same idea for Node/browser apps.
+- **`sdk/python`**: pip package (`microscope-client`), with `Django` and `FastAPI` integrations.
+- **`sdk/typescript`**: npm package (`@qobly/microscope-client`), with `Express` and `NestJS` integrations.
+- **`sdk/ruby`**: gem (`microscope_client`), stdlib-only.
+- **`sdk/php`**: composer package (`qobly/microscope-client`), with a `Laravel` service provider.
+- **`sdk/elixir`**: hex package (`microscope_client`).
 
 Any stack can record entries by calling the HTTP API directly, so the Go core doubles as the
-one service every language's SDK talks to.
+one service every language's SDK talks to. Each SDK is a thin wrapper around that API, so
+adding another language means writing a small HTTP client, not re-implementing the service.
 
 ## Requirements
 
@@ -84,8 +88,11 @@ Every stack talks to the same HTTP API, so a service written in Python, Node, or
 can record entries without touching Go:
 
 ```bash
-pip install microscope-client       # Python
-npm install @qobly/microscope-client  # TypeScript / JavaScript
+pip install microscope-client          # Python (Django, FastAPI integrations included)
+npm install @qobly/microscope-client   # TypeScript / JavaScript (Express, NestJS integrations included)
+gem install microscope_client          # Ruby
+composer require qobly/microscope-client  # PHP (Laravel integration included)
+mix deps.get microscope_client         # Elixir
 ```
 
 ```python
@@ -102,7 +109,27 @@ const client = new MicroscopeClient({ baseUrl: "http://localhost:8093/microscope
 await client.record("payment_charged", { amount: 4200 });
 ```
 
-See `sdk/python/README.md` and `sdk/typescript/README.md` for full SDK docs.
+```ruby
+client = MicroscopeClient::Client.new(base_url: "http://localhost:8093/microscope")
+client.record("payment_charged", content: { amount: 4200 })
+```
+
+```php
+$client = new Qobly\Microscope\MicroscopeClient("http://localhost:8093/microscope");
+$client->record("payment_charged", ["amount" => 4200]);
+```
+
+```elixir
+client = MicroscopeClient.new("http://localhost:8093/microscope")
+MicroscopeClient.record(client, "payment_charged", %{amount: 4200})
+```
+
+See each SDK's README for full docs and framework integrations:
+[`sdk/python`](sdk/python/README.md) (Django, FastAPI) ·
+[`sdk/typescript`](sdk/typescript/README.md) (Express, NestJS) ·
+[`sdk/ruby`](sdk/ruby/README.md) ·
+[`sdk/php`](sdk/php/README.md) (Laravel) ·
+[`sdk/elixir`](sdk/elixir/README.md)
 
 ## API
 
