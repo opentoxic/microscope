@@ -20,6 +20,15 @@ entries = client.list_entries(type="custom", limit=20)
 entry = client.get_entry(entries["items"][0]["id"])
 ```
 
+## Runtime metrics
+
+Periodically records thread count, memory, and GC stats so the dashboard's metrics view has
+something to show for Python services, the same way it does for Go:
+
+```python
+client.start_runtime_metrics(interval=15)  # call once at startup
+```
+
 ## Django
 
 ```bash
@@ -47,4 +56,11 @@ from microscope_client.integrations.fastapi import MicroscopeMiddleware
 
 app = FastAPI()
 app.add_middleware(MicroscopeMiddleware, base_url="http://localhost:8093/microscope")
+```
+
+## Testing
+
+```bash
+pip install -e ".[test]"
+python -m unittest discover -s tests -v
 ```

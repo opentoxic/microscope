@@ -14,6 +14,7 @@ dependencies = ["requests>=2.28"]
 [project.optional-dependencies]
 django = ["django>=4.2"]
 fastapi = ["starlette>=0.30"]
+test = ["django>=4.2", "starlette>=0.30", "httpx>=0.24"]
 
 [project.urls]
 Homepage = "https://github.com/qobly/microscope"

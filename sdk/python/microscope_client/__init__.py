@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import threading
 from typing import Any
 
 import requests
+
+from microscope_client.runtime_metrics import sample_runtime_metrics
 
 __all__ = ["MicroscopeClient"]
 
@@ -14,6 +17,8 @@ class MicroscopeClient:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
         self.session = requests.Session()
+        self._metrics_stop: threading.Event | None = None
+        self._metrics_thread: threading.Thread | None = None
 
     def record(self, name: str, content: dict[str, Any] | None = None) -> str:
         resp = self.session.post(
@@ -44,3 +49,32 @@ class MicroscopeClient:
         resp = self.session.get(f"{self.base_url}/api/entries/{entry_id}", timeout=self.timeout)
         resp.raise_for_status()
         return resp.json()
+
+    def start_runtime_metrics(self, interval: float = 15.0) -> None:
+        """Periodically record this process's runtime metrics (threads, memory, GC).
+
+        Safe to call once at startup; a second call is a no-op unless
+        `stop_runtime_metrics` was called first.
+        """
+        if self._metrics_thread is not None:
+            return
+
+        stop = threading.Event()
+
+        def loop() -> None:
+            while not stop.wait(interval):
+                try:
+                    self.record("python.runtime", content=sample_runtime_metrics())
+                except Exception:
+                    pass
+
+        thread = threading.Thread(target=loop, daemon=True, name="microscope-runtime-metrics")
+        self._metrics_stop = stop
+        self._metrics_thread = thread
+        thread.start()
+
+    def stop_runtime_metrics(self) -> None:
+        if self._metrics_stop is not None:
+            self._metrics_stop.set()
+        self._metrics_thread = None
+        self._metrics_stop = None
