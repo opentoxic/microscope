@@ -31,5 +31,13 @@ app.use(microscopeMiddleware({ baseUrl: "http://localhost:8093/microscope" }));
 
 ## NestJS
 
-See [`src/nestjs.ts`](src/nestjs.ts) — import `MicroscopeModule` and inject `MicroscopeClient`,
-or apply `MicroscopeInterceptor` globally to record every request.
+```ts
+import { APP_INTERCEPTOR } from "@nestjs/common";
+import { MicroscopeModule, MicroscopeInterceptor } from "@qobly/microscope-client/nestjs";
+
+@Module({
+  imports: [MicroscopeModule.forRoot({ baseUrl: "http://localhost:8093/microscope" })],
+  providers: [{ provide: APP_INTERCEPTOR, useClass: MicroscopeInterceptor }],
+})
+export class AppModule {}
+```
