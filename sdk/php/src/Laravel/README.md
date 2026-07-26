@@ -37,3 +37,14 @@ use Qobly\Microscope\MicroscopeClient;
 
 app(MicroscopeClient::class)->record('payment_charged', ['amount' => 4200]);
 ```
+
+## Runtime metrics
+
+PHP-FPM runs one request per process, so there's no background timer like the other SDKs have.
+Record a sample from a scheduled command instead, so the dashboard's metrics view has
+something to show for PHP services:
+
+```php
+// app/Console/Kernel.php
+$schedule->call(fn () => app(MicroscopeClient::class)->recordRuntimeMetrics())->everyMinute();
+```

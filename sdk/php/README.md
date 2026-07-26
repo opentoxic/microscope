@@ -21,6 +21,22 @@ $entries = $client->listEntries(type: 'custom', limit: 20);
 $entry = $client->getEntry($entries['items'][0]['id']);
 ```
 
+## Runtime metrics
+
+PHP-FPM handles one request per process, so there's no background timer here — call this
+once per request (or on a schedule) instead:
+
+```php
+$client->recordRuntimeMetrics(); // memory, peak memory, included files
+```
+
+## Testing
+
+```bash
+composer install
+composer test
+```
+
 ## Laravel integration
 
 This package ships a service provider that wires the client into the container and records

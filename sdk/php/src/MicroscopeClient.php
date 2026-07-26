@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Qobly\Microscope;
 
-final class MicroscopeClient
+class MicroscopeClient
 {
     private string $baseUrl;
     private int $timeoutSeconds;
@@ -41,7 +41,20 @@ final class MicroscopeClient
         return $this->request('GET', '/api/entries/' . rawurlencode($entryId));
     }
 
-    private function request(string $method, string $path, ?array $body = null): array
+    /**
+     * Records this process's runtime metrics (memory, included files) once.
+     * PHP-FPM handles one request per process, so there is no background
+     * timer here — call this per-request (e.g. from middleware) instead.
+     */
+    public function recordRuntimeMetrics(): string
+    {
+        $metrics = RuntimeMetrics::sample();
+
+        return $this->record($metrics['name'], $metrics);
+    }
+
+    /** @codeCoverageIgnore overridden by tests to avoid real HTTP calls */
+    protected function request(string $method, string $path, ?array $body = null): array
     {
         $ch = curl_init($this->baseUrl . $path);
         $headers = ['Accept: application/json'];

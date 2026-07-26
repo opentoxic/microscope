@@ -11,10 +11,21 @@
     "suggest": {
         "illuminate/support": "Required to use the Laravel service provider"
     },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
     "autoload": {
         "psr-4": {
             "Qobly\\Microscope\\": "src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Qobly\\Microscope\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
     },
     "extra": {
         "laravel": {
