@@ -11,6 +11,10 @@ requires-python = ">=3.9"
 license = { text = "MIT" }
 dependencies = ["requests>=2.28"]
 
+[project.optional-dependencies]
+django = ["django>=4.2"]
+fastapi = ["starlette>=0.30"]
+
 [project.urls]
 Homepage = "https://github.com/qobly/microscope"
 
