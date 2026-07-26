@@ -5,6 +5,11 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./express": "./dist/express.js",
+    "./nestjs": "./dist/nestjs.js"
+  },
   "files": ["dist"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -15,7 +20,20 @@
     "type": "git",
     "url": "https://github.com/qobly/microscope"
   },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "express": "^4.18.0 || ^5.0.0",
+    "rxjs": "^7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": { "optional": true },
+    "express": { "optional": true },
+    "rxjs": { "optional": true }
+  },
   "devDependencies": {
+    "@nestjs/common": "^10.4.0",
+    "@types/express": "^4.17.21",
+    "rxjs": "^7.8.0",
     "typescript": "^5.6.0"
   }
 }
