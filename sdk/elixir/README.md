@@ -21,3 +21,21 @@ client = MicroscopeClient.new("http://localhost:8093/microscope")
 {:ok, entries} = MicroscopeClient.list_entries(client, type: "custom", limit: 20)
 {:ok, entry} = MicroscopeClient.get_entry(client, id)
 ```
+
+## Runtime metrics
+
+Periodically records process count, scheduler count, and memory so the dashboard's metrics
+view has something to show for Elixir services, the same way it does for Go:
+
+```elixir
+pid = MicroscopeClient.start_runtime_metrics(client, 15_000) # call once at startup
+# later, if needed:
+MicroscopeClient.stop_runtime_metrics(pid)
+```
+
+## Testing
+
+```bash
+mix deps.get
+mix test
+```

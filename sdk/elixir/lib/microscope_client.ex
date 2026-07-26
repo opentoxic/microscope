@@ -39,6 +39,30 @@ defmodule MicroscopeClient do
     get(client, "/api/entries/" <> URI.encode(entry_id))
   end
 
+  @doc """
+  Periodically records this node's runtime metrics (process count,
+  schedulers, memory) so the dashboard's metrics view has something to show
+  for Elixir services, the same way it does for Go. Returns the reporter
+  pid; stop it with `stop_runtime_metrics/1`.
+  """
+  @spec start_runtime_metrics(t(), non_neg_integer()) :: pid()
+  def start_runtime_metrics(%__MODULE__{} = client, interval \\ 15_000) do
+    spawn(fn -> runtime_metrics_loop(client, interval) end)
+  end
+
+  @spec stop_runtime_metrics(pid()) :: :ok
+  def stop_runtime_metrics(pid) do
+    Process.exit(pid, :normal)
+    :ok
+  end
+
+  defp runtime_metrics_loop(client, interval) do
+    metrics = MicroscopeClient.RuntimeMetrics.sample()
+    record(client, metrics.name, metrics)
+    Process.sleep(interval)
+    runtime_metrics_loop(client, interval)
+  end
+
   defp post(client, path, body) do
     request(client, :post, path, Jason.encode!(body))
   end
