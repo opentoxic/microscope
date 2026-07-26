@@ -8,9 +8,19 @@
         "ext-curl": "*",
         "ext-json": "*"
     },
+    "suggest": {
+        "illuminate/support": "Required to use the Laravel service provider"
+    },
     "autoload": {
         "psr-4": {
             "Qobly\\Microscope\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Qobly\\Microscope\\Laravel\\MicroscopeServiceProvider"
+            ]
         }
     }
 }
