@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"runtime"
 	"sync"
 	"time"
 
@@ -61,23 +60,13 @@ func (h *Hub) startRuntimeSampler() {
 				if !h.TypeEnabled(TypeMetric) {
 					continue
 				}
-				var memory runtime.MemStats
-				runtime.ReadMemStats(&memory)
 				entryID := newID()
 				entry := Entry{
-					ID:      entryID,
-					BatchID: entryID,
-					Type:    TypeMetric,
-					Tags:    []string{"metric:go.runtime"},
-					Content: map[string]any{
-						"name":         "go.runtime",
-						"value":        runtime.NumGoroutine(),
-						"unit":         "goroutines",
-						"goroutines":   runtime.NumGoroutine(),
-						"heap_mb":      float64(memory.HeapAlloc) / 1024 / 1024,
-						"heap_objects": memory.HeapObjects,
-						"gc_cycles":    memory.NumGC,
-					},
+					ID:        entryID,
+					BatchID:   entryID,
+					Type:      TypeMetric,
+					Tags:      []string{"metric:go.runtime"},
+					Content:   goRuntimeMetricContent(),
 					CreatedAt: time.Now().UTC(),
 				}
 				insertCtx, cancel := context.WithTimeout(WithoutTrace(context.Background()), 5*time.Second)
