@@ -21,6 +21,33 @@ module MicroscopeClient
       get("/api/entries/#{entry_id}")
     end
 
+    # Periodically records this process's runtime metrics (threads, GC) so
+    # the dashboard's metrics view has something to show for Ruby services,
+    # the same way it does for Go. Safe to call once at startup; a second
+    # call is a no-op unless `stop_runtime_metrics` was called first.
+    def start_runtime_metrics(interval: 15)
+      return if @metrics_thread
+
+      @metrics_stop = false
+      @metrics_thread = Thread.new do
+        until @metrics_stop
+          begin
+            metrics = RuntimeMetrics.sample
+            record(metrics[:name], content: metrics)
+          rescue StandardError
+            nil
+          end
+          sleep(interval)
+        end
+      end
+    end
+
+    def stop_runtime_metrics
+      @metrics_stop = true
+      @metrics_thread&.wakeup rescue nil
+      @metrics_thread = nil
+    end
+
     private
 
     def post(path, body)
