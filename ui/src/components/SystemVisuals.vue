@@ -1,9 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Entry, EntryType } from '../types'
-import { entryDuration, isError, signalFor } from '../utils'
+import { detectMetricLanguage, entryDuration, isError, signalFor } from '../utils'
 
 const props = defineProps<{ entries: Entry[] }>()
+
+const LANGUAGE_SHORT_CODES: Record<string, string> = {
+  go: 'GO',
+  python: 'PY',
+  node: 'JS',
+  ruby: 'RB',
+  php: 'PHP',
+  elixir: 'EX',
+}
+
+const serviceLanguageCode = computed(() => {
+  const counts = new Map<string, number>()
+  for (const entry of props.entries) {
+    if (entry.type !== 'metric') continue
+    const language = detectMetricLanguage(entry)
+    if (language === 'unknown') continue
+    counts.set(language, (counts.get(language) || 0) + 1)
+  }
+  const top = [...counts].sort((a, b) => b[1] - a[1])[0]
+  return LANGUAGE_SHORT_CODES[top?.[0] || 'go'] || 'GO'
+})
 
 const chronological = computed(() => [...props.entries].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)))
 const activityBuckets = computed(() => {
@@ -91,7 +112,7 @@ const busiest = computed(() => {
           <g v-for="node in dependencies" :key="node.type">
             <line :x1="300" :y1="112" :x2="node.x + 32" :y2="node.y + 20" :class="{ active: node.count }" :style="{ '--edge': node.color, '--weight': Math.min(5, 1 + node.count / 5) }" />
           </g>
-          <g class="service-core"><circle cx="300" cy="112" r="42"/><circle cx="300" cy="112" r="31"/><text x="300" y="109">GO</text><text x="300" y="126">SERVICE</text></g>
+          <g class="service-core"><circle cx="300" cy="112" r="42"/><circle cx="300" cy="112" r="31"/><text x="300" y="109">{{ serviceLanguageCode }}</text><text x="300" y="126">SERVICE</text></g>
           <g v-for="node in dependencies" :key="`node-${node.type}`" class="dependency-node" :class="{ active: node.count }" :transform="`translate(${node.x} ${node.y})`" :style="{ '--node': node.color }">
             <rect width="66" height="42"/><circle cx="12" cy="13" r="3"/><text x="33" y="21">{{ node.label }}</text><text x="33" y="34">{{ node.count }} ops</text>
           </g>

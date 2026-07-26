@@ -132,7 +132,7 @@ onMounted(() => {
               <SignalIcon :type="signal.type" size="md" />
               <span class="setting-copy">
                 <strong>{{ signal.label }}</strong>
-                <small v-if="signal.type === 'metric'">Go runtime, goroutines, heap, GC, and custom metrics</small>
+                <small v-if="signal.type === 'metric'">Runtime metrics from Go, Python, Node.js, Ruby, PHP, or Elixir services, plus custom metrics</small>
                 <small v-else>{{ settingFor(signal)?.count || 0 }} retained records</small>
               </span>
               <span class="setting-count">{{ (settingFor(signal)?.count || 0).toLocaleString() }}</span>

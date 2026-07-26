@@ -113,7 +113,7 @@ export function summarize(entry: Entry): string {
     case 'mail': return String(content.subject || 'Mail delivery')
     case 'websocket': return `${content.event || 'message'} · ${content.channel || 'socket'}`
     case 'performance': return String(content.name || 'Performance span')
-    case 'metric': return `${content.name || 'Metric'} ${content.value ?? ''} ${content.unit || ''}`.trim()
+    case 'metric': return `${metricLanguageLabel(entry)} · ${content.name || 'Metric'} ${content.value ?? ''} ${content.unit || ''}`.trim()
     case 'custom': return String(content.name || 'Custom event')
     case 'topic': return `${content.action || 'activity'} · ${content.topic || 'topic'}`
     default: return String(content.name || entry.type)
@@ -136,11 +136,55 @@ export function entryMeta(entry: Entry): string {
     case 'http-client': return `${content.method || 'GET'} · ${content.status || '—'}`
     case 'websocket': return String(content.direction || 'activity')
     case 'performance': return 'performance span'
-    case 'metric': return String(content.unit || 'sample')
+    case 'metric': return `${metricLanguageLabel(entry)} · ${content.unit || 'sample'}`
     case 'custom': return 'custom signal'
     case 'topic': return `${content.partition != null ? `partition ${content.partition}` : 'Redpanda'} · ${content.message_count || 1} msg`
     default: return entry.type
   }
+}
+
+export const KNOWN_METRIC_LANGUAGES = ['go', 'python', 'node', 'ruby', 'php', 'elixir'] as const
+export type MetricLanguage = (typeof KNOWN_METRIC_LANGUAGES)[number] | 'unknown'
+
+const METRIC_LANGUAGE_LABELS: Record<string, string> = {
+  go: 'Go',
+  python: 'Python',
+  node: 'Node.js',
+  ruby: 'Ruby',
+  php: 'PHP',
+  elixir: 'Elixir',
+}
+
+function isKnownMetricLanguage(value: string): value is (typeof KNOWN_METRIC_LANGUAGES)[number] {
+  return (KNOWN_METRIC_LANGUAGES as readonly string[]).includes(value)
+}
+
+/**
+ * Detects which language reported a metric entry. Prefers the explicit
+ * `language` field SDKs set, and falls back to the "<language>.runtime"
+ * naming convention for older entries that predate it.
+ */
+export function detectMetricLanguage(entry: Entry): MetricLanguage {
+  const content = entry.content || {}
+  const explicit = String(content.language || '').toLowerCase()
+  if (isKnownMetricLanguage(explicit)) return explicit
+
+  const name = String(content.name || '')
+  const prefix = name.split('.')[0]?.toLowerCase() || ''
+  if (isKnownMetricLanguage(prefix)) return prefix
+
+  return 'unknown'
+}
+
+export function metricLanguageLabel(entry: Entry): string {
+  return METRIC_LANGUAGE_LABELS[detectMetricLanguage(entry)] || 'Unknown runtime'
+}
+
+/** A human label for a metric entry's concurrency unit, e.g. "Goroutines", "Threads". */
+export function metricUnitLabel(entry: Entry): string {
+  const unit = String(entry.content?.unit || '')
+  if (!unit) return 'Value'
+  return unit.charAt(0).toUpperCase() + unit.slice(1)
 }
 
 export function entryDuration(entry: Entry): number {

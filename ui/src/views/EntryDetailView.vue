@@ -10,7 +10,7 @@ import RelatedTabs from '../components/RelatedTabs.vue'
 import EntryInsight from '../components/EntryInsight.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
-import { entryDuration, entryMeta, formatClock, formatTimeLong, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
+import { entryDuration, entryMeta, formatClock, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
 import { llmSettings } from '../llmSettings'
 import { signalEnabled } from '../settings'
 
@@ -191,7 +191,7 @@ function openTimelineEntry(entry: Entry) {
             <div><span>Wall time</span><strong>{{ entryDuration(data.entry) || '—' }}<small v-if="entryDuration(data.entry)">ms</small></strong><i><b :style="{ width: `${Math.min(100, entryDuration(data.entry) / 10)}%` }" /></i></div>
             <div><span>SQL queries</span><strong>{{ queryCount }}</strong><small>in this trace</small></div>
             <div v-if="signalEnabled('metric')"><span>Memory</span><strong>{{ data.entry.content?.memory_mb || '—' }}<small v-if="data.entry.content?.memory_mb">MB</small></strong><small>peak allocation</small></div>
-            <div v-if="signalEnabled('metric')"><span>Goroutines</span><strong>{{ data.entry.content?.goroutines || '—' }}</strong><small>at completion</small></div>
+            <div v-if="signalEnabled('metric')"><span>{{ data.entry.type === 'metric' ? metricUnitLabel(data.entry) : 'Concurrency' }}</span><strong>{{ data.entry.content?.value ?? '—' }}</strong><small v-if="data.entry.type === 'metric'">{{ metricLanguageLabel(data.entry) }}</small><small v-else>at completion</small></div>
             <div><span>Exceptions</span><strong :class="{ danger: errorCount }">{{ errorCount }}</strong><small>related signals</small></div>
           </section>
 
@@ -206,7 +206,7 @@ function openTimelineEntry(entry: Entry) {
           </section>
 
           <section v-if="data.entry.type === 'exception'" class="exception-focus">
-            <header><span>Unhandled exception</span><strong>{{ data.entry.content?.kind || 'Go runtime' }}</strong></header>
+            <header><span>Unhandled exception</span><strong>{{ data.entry.content?.kind || 'Application runtime' }}</strong></header>
             <h2>{{ data.entry.content?.message || title }}</h2>
             <p>Signal preserved the surrounding request and execution context for this failure.</p>
           </section>

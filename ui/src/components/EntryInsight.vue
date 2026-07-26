@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Entry } from '../types'
-import { entryDuration, isError, signalFor, summarize } from '../utils'
+import { entryDuration, isError, metricLanguageLabel, signalFor, summarize } from '../utils'
 import SignalIcon from './SignalIcon.vue'
 
 const props = defineProps<{ entry: Entry; batch: Entry[] }>()
@@ -23,7 +23,7 @@ const finding = computed(() => {
   if (entry.type === 'request' && Number(content.status) >= 500) return `${String(content.method || 'HTTP').toUpperCase()} ${content.path || '/'} returned ${content.status}`
   if (entry.type === 'query' && entryDuration(entry) >= 100) return `SQL execution occupied ${entryDuration(entry)}ms of this trace`
   if (entry.type === 'topic') return `${String(content.action || 'Topic activity')} on ${content.topic || 'an unnamed Redpanda topic'}`
-  if (entry.type === 'metric') return `${content.name || 'Runtime metric'} measured ${content.value ?? '—'} ${content.unit || ''}`.trim()
+  if (entry.type === 'metric') return `${metricLanguageLabel(entry)} runtime metric ${content.name || ''} measured ${content.value ?? '—'} ${content.unit || ''}`.trim()
   return summarize(entry)
 })
 const diagnosis = computed(() => {
