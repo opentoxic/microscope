@@ -1,6 +1,9 @@
 package microscope
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -55,6 +58,70 @@ func TestRedactJSON(t *testing.T) {
 	}
 	if contains(out, "pw") {
 		t.Fatalf("password should be redacted in %s", out)
+	}
+}
+
+func TestHubSanitizeMapModes(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), nil)
+	input := map[string]any{
+		"password": "secret",
+		"email":    "user@example.com",
+	}
+
+	full := hub.SanitizeMap(input)
+	if full["password"] != "secret" {
+		t.Fatalf("expected full password, got %v", full["password"])
+	}
+
+	cfg := DefaultConfig()
+	cfg.RedactSensitive = true
+	redactingHub := NewWithStore(store, cfg, nil)
+	redacted := redactingHub.SanitizeMap(input)
+	if redacted["password"] != "[REDACTED]" {
+		t.Fatalf("expected redacted password, got %v", redacted["password"])
+	}
+}
+
+func TestHubSanitizeOTP(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), nil)
+	if hub.SanitizeOTP("123456") != "123456" {
+		t.Fatal("expected full otp by default")
+	}
+
+	cfg := DefaultConfig()
+	cfg.RedactSensitive = true
+	redactingHub := NewWithStore(store, cfg, nil)
+	if redactingHub.SanitizeOTP("123456") != "[REDACTED]" {
+		t.Fatal("expected redacted otp")
+	}
+}
+
+func TestHandlerRedactionAPI(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), nil)
+	h := &Handler{Hub: hub}
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/microscope/api/redaction", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("get status %d", rr.Code)
+	}
+
+	body := `{"enabled":true}`
+	req2 := httptest.NewRequest(http.MethodPut, "/microscope/api/redaction", strings.NewReader(body))
+	req2.Header.Set("Content-Type", "application/json")
+	rr2 := httptest.NewRecorder()
+	mux.ServeHTTP(rr2, req2)
+	if rr2.Code != http.StatusOK {
+		t.Fatalf("put status %d body %s", rr2.Code, rr2.Body.String())
+	}
+	if !hub.RedactSensitive() {
+		t.Fatal("expected redaction enabled")
 	}
 }
 

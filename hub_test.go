@@ -2,6 +2,7 @@ package microscope
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"sync"
 	"testing"
@@ -12,6 +13,7 @@ type memStore struct {
 	mu       sync.Mutex
 	entries  []Entry
 	settings map[EntryType]bool
+	options  map[string]json.RawMessage
 }
 
 func (m *memStore) Insert(_ context.Context, e Entry) error {
@@ -139,6 +141,29 @@ func (m *memStore) SetTypeEnabled(_ context.Context, entryType EntryType, enable
 	}
 	m.entries = kept
 	return deleted, nil
+}
+
+func (m *memStore) GetOption(_ context.Context, key string) (json.RawMessage, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.options == nil {
+		return nil, nil
+	}
+	value, ok := m.options[key]
+	if !ok {
+		return nil, nil
+	}
+	return append(json.RawMessage(nil), value...), nil
+}
+
+func (m *memStore) SetOption(_ context.Context, key string, value json.RawMessage) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.options == nil {
+		m.options = make(map[string]json.RawMessage)
+	}
+	m.options[key] = append(json.RawMessage(nil), value...)
+	return nil
 }
 
 var errNotFound = errors.New("entry not found")

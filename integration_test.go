@@ -84,8 +84,8 @@ func TestIntegrationActiveWithoutPool(t *testing.T) {
 
 func TestMigrationFS(t *testing.T) {
 	files := MigrationFiles()
-	if len(files) != 2 {
-		t.Fatalf("expected 2 migration files, got %d", len(files))
+	if len(files) != 3 {
+		t.Fatalf("expected 3 migration files, got %d", len(files))
 	}
 	for _, name := range files {
 		data, err := MigrationFS().Open("migrations/" + name)
@@ -138,7 +138,9 @@ func TestIntegrationHTTPMiddlewaresSkipAccessLog(t *testing.T) {
 
 func TestWrapOTPNotifierRedacts(t *testing.T) {
 	store := &memStore{}
-	hub := NewWithStore(store, DefaultConfig(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cfg := DefaultConfig()
+	cfg.RedactSensitive = true
+	hub := NewWithStore(store, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	inner := OTPNotifierFunc(func(ctx context.Context, kind, email, otp string) error {
 		return nil
@@ -159,6 +161,28 @@ func TestWrapOTPNotifierRedacts(t *testing.T) {
 	}
 	if entry.Content["otp"] != "[REDACTED]" {
 		t.Fatalf("otp %v", entry.Content["otp"])
+	}
+}
+
+func TestWrapOTPNotifierRecordsFullOTP(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	inner := OTPNotifierFunc(func(ctx context.Context, kind, email, otp string) error {
+		return nil
+	})
+	wrapped := WrapOTPNotifier(hub, &otpNotifierFuncAdapter{fn: inner})
+
+	ctx := WithBatchID(context.Background(), "batch-otp")
+	if err := wrapped.SendSignupOTP(ctx, "user@example.com", "123456"); err != nil {
+		t.Fatal(err)
+	}
+
+	waitForEntries(t, store, 1)
+	store.mu.Lock()
+	defer store.mu.Unlock()
+	if store.entries[0].Content["otp"] != "123456" {
+		t.Fatalf("otp %v", store.entries[0].Content["otp"])
 	}
 }
 

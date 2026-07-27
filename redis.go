@@ -37,9 +37,13 @@ func (h *RedisHook) ProcessHook(next goredis.ProcessHook) goredis.ProcessHook {
 	return func(ctx context.Context, command goredis.Cmder) error {
 		started := time.Now()
 		err := next(ctx, command)
-		h.hub.RecordRedis(ctx, strings.ToUpper(command.Name()), time.Since(started), err, map[string]any{
+		content := map[string]any{
 			"argument_count": len(command.Args()) - 1,
-		})
+		}
+		if h.hub != nil && !h.hub.RedactSensitive() && len(command.Args()) > 1 {
+			content["args"] = command.Args()[1:]
+		}
+		h.hub.RecordRedis(ctx, strings.ToUpper(command.Name()), time.Since(started), err, content)
 		return err
 	}
 }
@@ -53,10 +57,22 @@ func (h *RedisHook) ProcessPipelineHook(next goredis.ProcessPipelineHook) goredi
 		for _, command := range commands {
 			names = append(names, strings.ToUpper(command.Name()))
 		}
-		h.hub.RecordRedis(ctx, "PIPELINE", time.Since(started), err, map[string]any{
+		content := map[string]any{
 			"commands": names,
 			"count":    len(commands),
-		})
+		}
+		if h.hub != nil && !h.hub.RedactSensitive() {
+			args := make([][]any, 0, len(commands))
+			for _, command := range commands {
+				if len(command.Args()) > 1 {
+					args = append(args, command.Args()[1:])
+				} else {
+					args = append(args, nil)
+				}
+			}
+			content["args"] = args
+		}
+		h.hub.RecordRedis(ctx, "PIPELINE", time.Since(started), err, content)
 		return err
 	}
 }
