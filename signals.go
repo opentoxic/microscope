@@ -100,6 +100,20 @@ func (h *Hub) RecordTopic(ctx context.Context, topic, action string, duration ti
 	h.recordTyped(ctx, TypeTopic, []string{"topic:" + topic, "kafka:" + action}, payload)
 }
 
+// RecordEvent records a domain or application event.
+func (h *Hub) RecordEvent(ctx context.Context, eventType string, payload map[string]any) {
+	content := cloneContent(payload)
+	content["event_type"] = eventType
+	h.recordTyped(ctx, TypeEvent, []string{"event:" + eventType}, content)
+}
+
+// RecordNotification records a notification delivery attempt (e.g. email, SMS, OTP).
+func (h *Hub) RecordNotification(ctx context.Context, kind string, content map[string]any) {
+	payload := cloneContent(content)
+	payload["kind"] = kind
+	h.recordTyped(ctx, TypeNotification, []string{"notification:" + kind}, payload)
+}
+
 func (h *Hub) recordTyped(ctx context.Context, entryType EntryType, tags []string, content map[string]any) {
 	if h == nil {
 		return
