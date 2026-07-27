@@ -19,8 +19,9 @@ import {
 } from '../llmSettings'
 import { signals, type SignalDefinition } from '../utils'
 import type { Entry, EntryType } from '../types'
+import { accentOptions, appearance, resetAppearance, type Density } from '../appearance'
 
-const activeTab = ref<'recording' | 'llm'>('recording')
+const activeTab = ref<'recording' | 'appearance' | 'integrations' | 'llm'>('recording')
 const pending = ref<Record<string, boolean>>({})
 const notice = ref<{ tone: 'success' | 'error'; text: string } | null>(null)
 const analysisEntries = ref<Entry[]>([])
@@ -33,6 +34,23 @@ const groups = computed(() => ([
 ].map(group => ({ ...group, signals: signals.filter(signal => signal.type && signal.group === group.id) }))))
 
 const dataTypeSignals = computed(() => signals.filter(signal => signal.type))
+const densities: Array<{ id: Density; label: string; detail: string }> = [
+  { id: 'compact', label: 'Compact', detail: 'Maximum signal density' },
+  { id: 'comfortable', label: 'Comfortable', detail: 'Balanced for daily use' },
+  { id: 'spacious', label: 'Spacious', detail: 'More breathing room' },
+]
+const ecosystems = [
+  { language: 'Go', code: 'GO', frameworks: ['net/http', 'Gin', 'Echo', 'Fiber'], status: 'Core + HTTP API' },
+  { language: 'Python', code: 'PY', frameworks: ['Django', 'FastAPI', 'Flask', 'Starlette'], status: 'SDK included' },
+  { language: 'TypeScript', code: 'TS', frameworks: ['Express', 'NestJS', 'Fastify', 'Next.js'], status: 'SDK included' },
+  { language: 'PHP', code: 'PHP', frameworks: ['Laravel', 'Symfony', 'Slim'], status: 'SDK + Laravel' },
+  { language: 'Ruby', code: 'RB', frameworks: ['Rails', 'Sinatra', 'Hanami'], status: 'SDK included' },
+  { language: 'Elixir', code: 'EX', frameworks: ['Phoenix', 'Plug', 'Oban'], status: 'SDK included' },
+]
+
+function toggleAppearance(key: 'glow' | 'scanlines' | 'grid' | 'motion' | 'highContrast' | 'monospaceData') {
+  appearance[key] = !appearance[key]
+}
 
 function settingFor(signal: SignalDefinition) {
   return signalSettings.values[signal.type]
@@ -88,7 +106,7 @@ onMounted(() => {
 
 <template>
   <AppShell>
-    <template #status>{{ signalSettings.loading ? 'Synchronizing policy…' : activeTab === 'llm' ? 'LLM manual mode' : 'Policy enforced at ingestion' }}</template>
+    <template #status>{{ signalSettings.loading ? 'Synchronizing policy…' : activeTab === 'llm' ? 'LLM manual mode' : activeTab === 'appearance' ? 'Personalized locally' : activeTab === 'integrations' ? 'Six ecosystems ready' : 'Policy enforced at ingestion' }}</template>
 
     <section class="settings-intro">
       <div>
@@ -103,6 +121,8 @@ onMounted(() => {
 
     <div class="settings-tabs">
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'recording' }" @click="activeTab = 'recording'">Signal recording</button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'appearance' }" @click="activeTab = 'appearance'">Appearance</button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'integrations' }" @click="activeTab = 'integrations'">SDKs & frameworks</button>
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'llm' }" @click="activeTab = 'llm'">LLM provider</button>
     </div>
 
@@ -143,6 +163,82 @@ onMounted(() => {
         </section>
       </div>
     </template>
+
+    <section v-else-if="activeTab === 'appearance'" class="appearance-settings">
+      <header class="settings-section-heading">
+        <div><span>Visual system</span><strong>Make the console yours.</strong><p>All appearance preferences apply instantly and stay in this browser.</p></div>
+        <button class="settings-reset" @click="resetAppearance">Reset defaults</button>
+      </header>
+
+      <div class="appearance-preview" :style="{ '--preview-accent': accentOptions.find(item => item.id === appearance.accent)?.color }">
+        <div class="preview-chrome"><i /><i /><i /><span>MICROSCOPE / LIVE RUNTIME</span></div>
+        <div class="preview-grid">
+          <aside><i v-for="index in 6" :key="index" /></aside>
+          <main>
+            <span>OBSERVABILITY FEED</span>
+            <strong>Every signal. One timeline.</strong>
+            <div><i v-for="index in 18" :key="index" :style="{ height: `${12 + (index * 13) % 38}px` }" /></div>
+          </main>
+        </div>
+      </div>
+
+      <div class="preference-grid">
+        <section class="preference-panel preference-panel--wide">
+          <header><strong>Accent energy</strong><small>Used for active navigation, focus, and live-state feedback.</small></header>
+          <div class="accent-picker">
+            <button v-for="option in accentOptions" :key="option.id" :class="{ active: appearance.accent === option.id }" @click="appearance.accent = option.id">
+              <i :style="{ background: option.color, boxShadow: `0 0 16px ${option.color}` }" /><span>{{ option.label }}</span><b />
+            </button>
+          </div>
+        </section>
+
+        <section class="preference-panel preference-panel--wide">
+          <header><strong>Interface density</strong><small>Controls spacing without hiding information.</small></header>
+          <div class="density-picker">
+            <button v-for="density in densities" :key="density.id" :class="{ active: appearance.density === density.id }" @click="appearance.density = density.id">
+              <span>{{ density.label }}</span><small>{{ density.detail }}</small>
+            </button>
+          </div>
+        </section>
+
+        <button
+          v-for="option in [
+            { key: 'motion', label: 'Interface motion', detail: 'Page transitions and animated state changes' },
+            { key: 'glow', label: 'Neon glow', detail: 'Luminous edges and signal halos' },
+            { key: 'scanlines', label: 'Scanline texture', detail: 'Subtle cyberdeck display finish' },
+            { key: 'grid', label: 'Ambient grid', detail: 'Faint coordinate grid behind workspaces' },
+            { key: 'highContrast', label: 'High contrast', detail: 'Brighter text and stronger boundaries' },
+            { key: 'monospaceData', label: 'Technical typography', detail: 'Monospace IDs, metrics, and values' },
+          ]"
+          :key="option.key"
+          class="preference-toggle"
+          @click="toggleAppearance(option.key as 'glow' | 'scanlines' | 'grid' | 'motion' | 'highContrast' | 'monospaceData')"
+        >
+          <span><strong>{{ option.label }}</strong><small>{{ option.detail }}</small></span>
+          <i class="setting-switch" :class="{ on: appearance[option.key as keyof typeof appearance] }"><b /></i>
+        </button>
+      </div>
+    </section>
+
+    <section v-else-if="activeTab === 'integrations'" class="integration-settings">
+      <header class="settings-section-heading">
+        <div><span>Polyglot telemetry</span><strong>One microscope for every service.</strong><p>SDKs emit the same normalized entry format to the standalone Go collector.</p></div>
+        <span class="integration-ready"><i /> HTTP ingestion ready</span>
+      </header>
+      <div class="ecosystem-grid">
+        <article v-for="ecosystem in ecosystems" :key="ecosystem.language" class="ecosystem-card">
+          <header><i>{{ ecosystem.code }}</i><div><strong>{{ ecosystem.language }}</strong><small>{{ ecosystem.status }}</small></div><span>READY</span></header>
+          <div>
+            <span v-for="framework in ecosystem.frameworks" :key="framework">{{ framework }}</span>
+          </div>
+          <footer><i /><span>Runtime metrics</span><i /><span>Custom events</span><i /><span>HTTP transport</span></footer>
+        </article>
+      </div>
+      <div class="integration-contract">
+        <div><span>Universal contract</span><strong>POST /microscope/api/entries</strong><small>Any framework can integrate without a native SDK.</small></div>
+        <code>{ "name": "checkout.completed", "content": { "duration_ms": 84 } }</code>
+      </div>
+    </section>
 
     <section v-else class="llm-settings">
       <header>

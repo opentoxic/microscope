@@ -1,9 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Entry, EntryType } from '../types'
 import { detectMetricLanguage, entryDuration, isError, signalFor } from '../utils'
 
 const props = defineProps<{ entries: Entry[] }>()
+const router = useRouter()
+const tooltip = ref<{ x: number; y: number; title: string; value: string; detail: string } | null>(null)
+
+function showTooltip(event: MouseEvent, title: string, value: string, detail: string) {
+  tooltip.value = {
+    x: Math.min(window.innerWidth - 198, Math.max(10, event.clientX + 12)),
+    y: Math.max(8, event.clientY - 72),
+    title,
+    value,
+    detail,
+  }
+}
+
+function hideTooltip() {
+  tooltip.value = null
+}
 
 const LANGUAGE_SHORT_CODES: Record<string, string> = {
   go: 'GO',
@@ -94,35 +111,43 @@ const busiest = computed(() => {
     </header>
 
     <div class="visuals-grid">
-      <article class="flow-visual">
+      <article class="flow-visual" @mouseleave="hideTooltip">
         <header><span>Activity current</span><small>24 adaptive intervals</small></header>
         <svg viewBox="0 0 700 150" preserveAspectRatio="none" role="img" aria-label="Activity over time">
           <defs><linearGradient id="activity-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#20d9ee" stop-opacity=".28"/><stop offset="1" stop-color="#20d9ee" stop-opacity="0"/></linearGradient></defs>
           <path class="chart-grid" d="M0 25H700M0 60H700M0 95H700M0 130H700"/>
           <polygon :points="areaPoints" fill="url(#activity-fill)" />
           <polyline :points="linePoints" />
-          <circle v-for="(count, index) in activityBuckets" :key="index" :cx="index / 23 * 700" :cy="128 - count / maxActivity * 102" r="2.5"><title>{{ count }} signals</title></circle>
+          <circle
+            v-for="(count, index) in activityBuckets"
+            :key="index"
+            :cx="index / 23 * 700"
+            :cy="128 - count / maxActivity * 102"
+            r="4"
+            tabindex="0"
+            @mousemove="showTooltip($event, `Interval ${index + 1}`, `${count} signals`, `${Math.round(count / maxActivity * 100)}% of peak activity`)"
+          />
         </svg>
         <footer><span>earliest</span><strong>{{ entries.length }} total signals</strong><span>now</span></footer>
       </article>
 
-      <article class="topology-visual">
+      <article class="topology-visual" @mouseleave="hideTooltip">
         <header><span>Service interactions</span><small>edge strength = activity</small></header>
         <svg viewBox="0 0 600 250" role="img" aria-label="Service dependency topology">
           <g v-for="node in dependencies" :key="node.type">
             <line :x1="300" :y1="112" :x2="node.x + 32" :y2="node.y + 20" :class="{ active: node.count }" :style="{ '--edge': node.color, '--weight': Math.min(5, 1 + node.count / 5) }" />
           </g>
           <g class="service-core"><circle cx="300" cy="112" r="42"/><circle cx="300" cy="112" r="31"/><text x="300" y="109">{{ serviceLanguageCode }}</text><text x="300" y="126">SERVICE</text></g>
-          <g v-for="node in dependencies" :key="`node-${node.type}`" class="dependency-node" :class="{ active: node.count }" :transform="`translate(${node.x} ${node.y})`" :style="{ '--node': node.color }">
+          <g v-for="node in dependencies" :key="`node-${node.type}`" class="dependency-node" :class="{ active: node.count }" :transform="`translate(${node.x} ${node.y})`" :style="{ '--node': node.color }" tabindex="0" @mousemove="showTooltip($event, node.label, `${node.count} operations`, `${signalFor(node.type).label} in this window`)">
             <rect width="66" height="42"/><circle cx="12" cy="13" r="3"/><text x="33" y="21">{{ node.label }}</text><text x="33" y="34">{{ node.count }} ops</text>
           </g>
         </svg>
       </article>
 
-      <article class="latency-visual">
+      <article class="latency-visual" @mouseleave="hideTooltip">
         <header><span>Latency distribution</span><small>milliseconds</small></header>
         <div class="histogram">
-          <span v-for="bucket in latencyBuckets" :key="bucket.label">
+          <span v-for="bucket in latencyBuckets" :key="bucket.label" @mousemove="showTooltip($event, `${bucket.label} ms`, `${bucket.count} operations`, `${Math.round(bucket.count / Math.max(1, timed.length) * 100)}% of timed signals`)">
             <b>{{ bucket.count }}</b>
             <i><em :style="{ height: `${Math.max(bucket.count ? 8 : 1, bucket.count / maxLatencyBucket * 100)}%` }" /></i>
             <small>{{ bucket.label }}</small>
@@ -130,15 +155,17 @@ const busiest = computed(() => {
         </div>
       </article>
 
-      <article class="evidence-visual">
+      <article class="evidence-visual" @mouseleave="hideTooltip">
         <header><span>Evidence matrix</span><small>latest {{ Math.min(entries.length, 56) }}</small></header>
         <div class="evidence-matrix">
-          <i
+          <button
             v-for="entry in entries.slice(0, 56)"
             :key="entry.id"
             :class="{ error: isError(entry) }"
             :style="{ '--cell': signalFor(entry.type).color, '--intensity': Math.min(1, .35 + entryDuration(entry) / 800) }"
-            :title="`${signalFor(entry.type).label} · ${entryDuration(entry) || 0}ms`"
+            :aria-label="`Open ${signalFor(entry.type).label} entry`"
+            @mousemove="showTooltip($event, signalFor(entry.type).label, entryDuration(entry) ? `${entryDuration(entry)}ms` : 'Untimed', String(entry.content?.path || entry.content?.name || entry.id.slice(0, 12)))"
+            @click="router.push(`/entries/${entry.id}`)"
           />
           <i v-for="index in Math.max(0, 56 - entries.length)" :key="`empty-${index}`" class="empty" />
         </div>
@@ -149,5 +176,6 @@ const busiest = computed(() => {
         </div>
       </article>
     </div>
+    <div v-if="tooltip" class="chart-tooltip" :style="{ left: `${tooltip.x}px`, top: `${tooltip.y}px` }"><small>{{ tooltip.title }}</small><strong>{{ tooltip.value }}</strong><span>{{ tooltip.detail }}</span></div>
   </section>
 </template>

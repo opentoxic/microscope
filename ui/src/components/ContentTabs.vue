@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import type { ContentTab } from '../types'
 import CodeBlock from './CodeBlock.vue'
+import JsonExplorer from './JsonExplorer.vue'
 
 defineProps<{ tabs: ContentTab[] }>()
 const active = ref(0)
@@ -23,6 +24,9 @@ const active = ref(0)
       </div>
       <span class="editor-language">{{ tabs[active].json ? 'application/json' : 'text/plain' }}</span>
     </header>
-    <CodeBlock :body="tabs[active].body" :json="tabs[active].json" />
+    <Transition name="data-view" mode="out-in">
+      <JsonExplorer v-if="tabs[active].json" :key="tabs[active].id" :body="tabs[active].body" />
+      <CodeBlock v-else :key="tabs[active].id" :body="tabs[active].body" />
+    </Transition>
   </section>
 </template>

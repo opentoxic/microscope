@@ -1,6 +1,8 @@
 import type { Entry, EntryDetailResponse, EntryType, ListResult, LLMInsightResponse, SignalSetting } from '../types'
+import { demoDetail, demoEntries, demoList, demoSettings } from '../demo'
 
 const API = '/microscope/api'
+export const demoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(API + path, init)
@@ -12,22 +14,27 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function listEntries(params: URLSearchParams) {
+  if (demoMode) return Promise.resolve(demoList(params))
   return request<ListResult>(`/entries?${params}`)
 }
 
 export function getEntry(id: string) {
+  if (demoMode) return Promise.resolve(demoDetail(id))
   return request<EntryDetailResponse>(`/entries/${encodeURIComponent(id)}`)
 }
 
 export function pruneEntries() {
+  if (demoMode) return Promise.resolve({ deleted: demoEntries.length })
   return request<{ deleted: number }>('/prune', { method: 'POST' })
 }
 
 export function getSignalSettings() {
+  if (demoMode) return Promise.resolve({ settings: demoSettings() })
   return request<{ settings: SignalSetting[] }>('/settings')
 }
 
 export function updateSignalSetting(type: EntryType, enabled: boolean) {
+  if (demoMode) return Promise.resolve({ type, enabled, deleted: enabled ? 0 : demoEntries.filter(entry => entry.type === type).length })
   return request<{ type: EntryType; enabled: boolean; deleted: number }>(`/settings/${encodeURIComponent(type)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -59,6 +66,7 @@ export function listLLMModels(provider: string, apiKey: string) {
 }
 
 export function createCustomEntry(name: string, content: Record<string, unknown> = {}) {
+  if (demoMode) return Promise.resolve({ id: `demo-marker-${Date.now()}` })
   return request<{ id: string }>('/entries', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -71,6 +79,15 @@ export function subscribeEntries(
   onState?: (connected: boolean) => void,
   onControl?: (event: { action: string; type?: EntryType; deleted: number }) => void,
 ) {
+  if (demoMode) {
+    onState?.(true)
+    let index = 0
+    const timer = window.setInterval(() => {
+      const source = demoEntries[index++ % demoEntries.length]
+      onEntry({ ...source, id: `${source.id}-live-${index}`, created_at: new Date().toISOString() })
+    }, 6000)
+    return () => window.clearInterval(timer)
+  }
   const source = new EventSource(`${API}/stream`)
   source.onopen = () => onState?.(true)
   source.onerror = () => onState?.(false)

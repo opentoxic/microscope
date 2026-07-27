@@ -10,6 +10,7 @@ import RelatedTabs from '../components/RelatedTabs.vue'
 import EntryInsight from '../components/EntryInsight.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
+import SqlInspector from '../components/SqlInspector.vue'
 import { entryDuration, entryMeta, formatClock, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
 import { llmSettings } from '../llmSettings'
 import { signalEnabled } from '../settings'
@@ -211,11 +212,13 @@ function openTimelineEntry(entry: Entry) {
             <p>Signal preserved the surrounding request and execution context for this failure.</p>
           </section>
 
-          <section v-if="data.entry.type === 'query'" class="query-focus">
-            <header><span>SQL inspector</span><strong>{{ entryDuration(data.entry) }}ms</strong></header>
-            <pre>{{ data.entry.content?.sql }}</pre>
-            <footer><span>Connection · {{ data.entry.content?.connection || 'default' }}</span><span>{{ data.entry.content?.bindings ? 'Bindings captured' : 'No bindings' }}</span></footer>
-          </section>
+          <SqlInspector
+            v-if="data.entry.type === 'query'"
+            :sql="String(data.entry.content?.sql || '')"
+            :bindings="data.entry.content?.bindings"
+            :duration="entryDuration(data.entry)"
+            :connection="String(data.entry.content?.connection || 'default')"
+          />
 
           <section v-if="data.entry.type === 'topic'" class="topic-focus">
             <header>

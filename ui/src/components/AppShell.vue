@@ -5,6 +5,7 @@ import CommandPalette from './CommandPalette.vue'
 import SignalIcon from './SignalIcon.vue'
 import { signalFor, signals, typeTitles } from '../utils'
 import { enabledSignals, loadSignalSettings, signalEnabled } from '../settings'
+import { demoMode } from '../api/client'
 
 const route = useRoute()
 const router = useRouter()
@@ -83,17 +84,18 @@ onBeforeUnmount(() => {
           <span /><span /><span />
         </RouterLink>
         <div class="brand-name">
-          <strong>Signal</strong>
-          <span>Qobly runtime</span>
+          <strong>Microscope</strong>
+          <span>Runtime observatory</span>
         </div>
       </div>
 
       <div class="session-identity">
         <span class="session-pulse" />
         <div>
-          <small>Live session</small>
+          <small>{{ demoMode ? 'Interactive demo' : 'Live session' }}</small>
           <strong>{{ title }}</strong>
         </div>
+        <span v-if="demoMode" class="demo-chip">DEMO</span>
       </div>
 
       <div class="instrument-actions">
@@ -103,9 +105,9 @@ onBeforeUnmount(() => {
           <kbd>⌘ K</kbd>
         </button>
         <slot name="actions" />
-        <a href="/" class="portal-exit" aria-label="Return to portal">
+        <RouterLink to="/" class="portal-exit" aria-label="Return to activity">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v12h12v-4M10 10l6-6m-4 0h4v4"/></svg>
-        </a>
+        </RouterLink>
       </div>
     </header>
 
