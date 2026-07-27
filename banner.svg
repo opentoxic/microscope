@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="microscope">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050a0d"/>
+      <stop offset="1" stop-color="#0a1218"/>
+    </linearGradient>
+
+    <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+      <stop offset="0" stop-color="#20d9ee" stop-opacity="0.32"/>
+      <stop offset="55%" stop-color="#28e0a0" stop-opacity="0.1"/>
+      <stop offset="100%" stop-color="#4c9fff" stop-opacity="0"/>
+    </radialGradient>
+
+    <pattern id="scan" width="24" height="24" patternUnits="userSpaceOnUse">
+      <rect width="24" height="24" fill="#081016"/>
+      <path d="M0 12 H24 M12 0 V24" stroke="#14303a" stroke-width="1"/>
+    </pattern>
+
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#20d9ee"/>
+      <stop offset="50%" stop-color="#28e0a0"/>
+      <stop offset="100%" stop-color="#4c9fff"/>
+    </linearGradient>
+
+    <filter id="textGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="320" fill="url(#bg)"/>
+  <rect width="1200" height="320" fill="url(#scan)" opacity="0.45"/>
+
+  <rect y="0" width="1200" height="6" fill="url(#rail)"/>
+  <rect y="314" width="1200" height="6" fill="url(#rail)"/>
+
+  <circle cx="600" cy="150" r="230" fill="url(#glow)"/>
+
+  <g opacity="0.55" stroke="#20d9ee" stroke-width="1.2" fill="none">
+    <circle cx="600" cy="150" r="92"/>
+    <circle cx="600" cy="150" r="124"/>
+    <path d="M600 26 V274 M476 150 H724"/>
+  </g>
+
+  <g opacity="0.8" fill="none" stroke="url(#rail)" stroke-width="2.2" stroke-linecap="round">
+    <path d="M500 198 C540 168 560 132 600 118 C640 132 660 168 700 198"/>
+    <path d="M520 206 C552 186 572 160 600 148 C628 160 648 186 680 206" opacity="0.55"/>
+  </g>
+
+  <g opacity="0.9" fill="#28e0a0">
+    <circle cx="600" cy="118" r="5"/>
+    <circle cx="548" cy="176" r="4"/>
+    <circle cx="652" cy="176" r="4"/>
+  </g>
+
+  <text x="600" y="146" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif"
+        font-size="78" font-weight="800" letter-spacing="8" fill="#b8f4ff" filter="url(#textGlow)">
+    MICROSCOPE
+  </text>
+
+  <text x="600" y="146" text-anchor="middle" font-family="'Segoe UI', system-ui, sans-serif"
+        font-size="78" font-weight="800" letter-spacing="8" fill="#e8fbff">
+    MICROSCOPE
+  </text>
+
+  <text x="600" y="198" text-anchor="middle" font-family="Consolas, 'Courier New', monospace"
+        font-size="18" letter-spacing="2.8" fill="#7eb4c0">
+    DEVELOPMENT OBSERVABILITY &#183; ANY STACK
+  </text>
+
+  <text x="600" y="228" text-anchor="middle" font-family="Consolas, 'Courier New', monospace"
+        font-size="12" letter-spacing="2.2" fill="#4f727c">
+    HTTP &#183; SQL &#183; REDIS &#183; KAFKA &#183; LOGS &#183; TRACES &#183; PANICS
+  </text>
+</svg>
