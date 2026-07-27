@@ -1,17 +1,17 @@
-# @qobly/microscope-client
+# @opentoxic/microscope-client
 
 Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 
 ## Install
 
 ```bash
-npm install @qobly/microscope-client
+npm install @opentoxic/microscope-client
 ```
 
 ## Usage
 
 ```ts
-import { MicroscopeClient } from "@qobly/microscope-client";
+import { MicroscopeClient } from "@opentoxic/microscope-client";
 
 const client = new MicroscopeClient({ baseUrl: "http://localhost:8093/microscope" });
 
@@ -33,7 +33,7 @@ client.startRuntimeMetrics(15_000); // call once at startup
 
 ```ts
 import express from "express";
-import { microscopeMiddleware } from "@qobly/microscope-client/express";
+import { microscopeMiddleware } from "@opentoxic/microscope-client/express";
 
 const app = express();
 app.use(microscopeMiddleware({ baseUrl: "http://localhost:8093/microscope" }));
@@ -43,7 +43,7 @@ app.use(microscopeMiddleware({ baseUrl: "http://localhost:8093/microscope" }));
 
 ```ts
 import { APP_INTERCEPTOR } from "@nestjs/common";
-import { MicroscopeModule, MicroscopeInterceptor } from "@qobly/microscope-client/nestjs";
+import { MicroscopeModule, MicroscopeInterceptor } from "@opentoxic/microscope-client/nestjs";
 
 @Module({
   imports: [MicroscopeModule.forRoot({ baseUrl: "http://localhost:8093/microscope" })],
