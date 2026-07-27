@@ -67,10 +67,54 @@ export function demoDetail(id: string): EntryDetailResponse {
     else groups.push({ type: item.type, label: item.type.replace('-', ' '), entries: [item] })
     return groups
   }, [] as BatchTypeGroup[])
-  const tabs: ContentTab[] = [
-    { id: 'content', label: 'Content', body: JSON.stringify(selected.content, null, 2), json: true },
-    { id: 'metadata', label: 'Metadata', body: JSON.stringify({ tags: selected.tags, request_id: selected.request_id, correlation_id: selected.correlation_id, captured_by: 'standalone-demo' }, null, 2), json: true },
-  ]
+
+  const tabs: ContentTab[] = []
+  if (selected.type === 'request') {
+    const content = selected.content
+    tabs.push(
+      {
+        id: 'payload',
+        label: 'Payload',
+        body: JSON.stringify({
+          order_id: 8400 + demoEntries.indexOf(selected),
+          items: [{ sku: 'SKU-441', qty: 2, price: 49.99 }, { sku: 'SKU-882', qty: 1, price: 29.97 }],
+          customer: { email: 'developer@example.test', tier: 'pro' },
+          metadata: { source: 'web-checkout', campaign: 'summer-2026' },
+        }, null, 2),
+        json: true,
+      },
+      {
+        id: 'headers',
+        label: 'Headers',
+        body: JSON.stringify({
+          'content-type': 'application/json',
+          authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.demo',
+          'x-request-id': selected.request_id,
+          'user-agent': 'MicroscopeDemo/1.0',
+          accept: 'application/json',
+          cookie: 'session=demo-session-token; preferences=dark',
+        }, null, 2),
+        json: true,
+      },
+      {
+        id: 'response',
+        label: 'Response',
+        body: JSON.stringify({
+          status: content.status || 200,
+          message: Number(content.status) >= 500 ? 'Service unavailable' : 'Order accepted',
+          order: { id: 8400 + demoEntries.indexOf(selected), total: 129.95, currency: 'USD' },
+          timing: { duration_ms: content.duration_ms, processed_at: selected.created_at },
+        }, null, 2),
+        json: true,
+      },
+    )
+  } else {
+    tabs.push(
+      { id: 'content', label: 'Content', body: JSON.stringify(selected.content, null, 2), json: true },
+      { id: 'metadata', label: 'Metadata', body: JSON.stringify({ tags: selected.tags, request_id: selected.request_id, correlation_id: selected.correlation_id, captured_by: 'standalone-demo' }, null, 2), json: true },
+    )
+  }
+
   return { entry: selected, batch, batch_groups: related, content_tabs: tabs, related_active_tab: selected.type }
 }
 
