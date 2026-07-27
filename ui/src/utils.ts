@@ -57,6 +57,17 @@ export function formatClock(iso: string): string {
   return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
 }
 
+export function formatRecordDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+export function formatRecordTime(iso: string): string {
+  const date = new Date(iso)
+  const clock = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })
+  const ms = date.getMilliseconds()
+  return ms ? `${clock}.${String(ms).padStart(3, '0')}` : clock
+}
+
 export function formatTimeLong(iso: string): string {
   return new Date(iso).toLocaleString('en-US', {
     month: 'short',
@@ -137,7 +148,7 @@ export function entryMeta(entry: Entry): string {
     case 'websocket': return String(content.direction || 'activity')
     case 'performance': return 'performance span'
     case 'metric': return `${metricLanguageLabel(entry)} · ${content.unit || 'sample'}`
-    case 'custom': return 'custom signal'
+    case 'custom': return 'custom record'
     case 'topic': return `${content.partition != null ? `partition ${content.partition}` : 'Redpanda'} · ${content.message_count || 1} msg`
     default: return entry.type
   }
