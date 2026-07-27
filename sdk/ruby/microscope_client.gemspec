@@ -5,7 +5,7 @@ Gem::Specification.new do |spec|
   spec.description   = "Record and query microscope observability entries over HTTP."
   spec.authors       = ["Qobly"]
   spec.license       = "MIT"
-  spec.homepage      = "https://github.com/qobly/microscope"
+  spec.homepage      = "https://github.com/opentoxic/microscope"
   spec.required_ruby_version = ">= 3.0"
   spec.files         = Dir["lib/**/*.rb"]
   spec.require_paths = ["lib"]

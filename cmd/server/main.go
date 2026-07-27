@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/qobly/microscope"
+	"github.com/opentoxic/microscope"
 )
 
 func main() {

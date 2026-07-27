@@ -1,6 +1,11 @@
 {
     "name": "qobly/microscope-client",
     "description": "Thin HTTP client for the microscope observability API",
+    "homepage": "https://github.com/opentoxic/microscope",
+    "support": {
+        "issues": "https://github.com/opentoxic/microscope/issues",
+        "source": "https://github.com/opentoxic/microscope"
+    },
     "type": "library",
     "license": "MIT",
     "require": {

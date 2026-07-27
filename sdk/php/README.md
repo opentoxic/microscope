@@ -1,6 +1,6 @@
 # qobly/microscope-client (PHP)
 
-Thin HTTP client for the [microscope](https://github.com/qobly/microscope) observability API.
+Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 Only depends on ext-curl and ext-json — no third-party HTTP library required.
 
 ## Install

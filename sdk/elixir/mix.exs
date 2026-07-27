@@ -25,7 +25,7 @@ defmodule MicroscopeClient.MixProject do
   defp package do
     [
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/qobly/microscope"}
+      links: %{"GitHub" => "https://github.com/opentoxic/microscope"}
     ]
   end
 end

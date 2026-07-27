@@ -1,6 +1,6 @@
 # microscope-client (Python)
 
-Thin HTTP client for the [microscope](https://github.com/qobly/microscope) observability API.
+Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 
 ## Install
 
