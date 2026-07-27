@@ -8,6 +8,7 @@ import ToastStack from './ToastStack.vue'
 import { signalFor, signals, typeTitles } from '../utils'
 import { enabledSignals, loadSignalSettings, signalEnabled } from '../settings'
 import { demoMode } from '../api/client'
+import { activeDetailEntryType } from '../detailContext'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,7 +17,12 @@ const chordOpen = ref(false)
 let chordTimer: ReturnType<typeof setTimeout> | null = null
 const compactSignals = computed(() => enabledSignals.value)
 const currentType = computed(() => String(route.query.type || ''))
-const currentSignal = computed(() => signalFor(currentType.value))
+const sidebarActiveType = computed(() => {
+  if (route.name === 'detail') return activeDetailEntryType.value
+  if (route.name === 'settings') return ''
+  return currentType.value
+})
+const currentSignal = computed(() => signalFor(sidebarActiveType.value || currentType.value))
 const title = computed(() => {
   if (route.name === 'detail') return 'Trace inspector'
   if (route.name === 'settings') return 'Settings'
@@ -44,12 +50,14 @@ const sessionEyebrow = computed(() => {
 const sessionSignal = computed(() => {
   if (demoMode || route.name === 'settings') return 'var(--cyan)'
   if (route.query.bookmarked === '1') return 'var(--amber)'
+  if (route.name === 'detail' && sidebarActiveType.value) return signalFor(sidebarActiveType.value).color
   if (route.name === 'detail') return 'var(--purple)'
   return currentSignal.value.color
 })
 
 const sessionIconType = computed(() => {
-  if (route.name === 'settings' || route.name === 'detail' || route.query.bookmarked === '1') return ''
+  if (route.name === 'settings' || route.query.bookmarked === '1') return ''
+  if (route.name === 'detail') return sidebarActiveType.value as typeof currentSignal.value.type
   return currentType.value as typeof currentSignal.value.type
 })
 
@@ -59,7 +67,10 @@ const sessionHomeLink = computed(() => {
   return ''
 })
 
-const showSessionGlyph = computed(() => route.name === 'list' && Boolean(currentType.value))
+const showSessionGlyph = computed(() => {
+  if (route.name === 'detail') return Boolean(sidebarActiveType.value)
+  return route.name === 'list' && Boolean(currentType.value)
+})
 
 function navigate(type: string) {
   router.push(type ? { path: '/', query: { type } } : '/')
@@ -180,7 +191,7 @@ onBeforeUnmount(() => {
             v-for="(signal, index) in compactSignals"
             :key="signal.type"
             class="signal-tab"
-            :class="{ 'is-active': currentType === signal.type && route.name === 'list', 'is-dormant': !signal.available }"
+            :class="{ 'is-active': sidebarActiveType === signal.type, 'is-dormant': !signal.available }"
             :style="{ '--signal': signal.color, '--nav-delay': `${index * 32}ms` }"
             @click="navigate(signal.type)"
           >
