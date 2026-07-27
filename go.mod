@@ -1,4 +1,4 @@
-module github.com/qobly/microscope
+module github.com/opentoxic/microscope
 
 go 1.25.0
 

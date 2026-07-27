@@ -7,7 +7,7 @@ by the Go core.
 
 ## Layout
 
-- **Go core** (repo root, module `github.com/qobly/microscope`): the hub, storage, HTTP API,
+- **Go core** (repo root, module `github.com/opentoxic/microscope`): the hub, storage, HTTP API,
   and embedded UI. Import it directly in a Go service, or run it standalone via `cmd/server`.
 - **`sdk/python`**: pip package (`microscope-client`), with `Django` and `FastAPI` integrations.
 - **`sdk/typescript`**: npm package (`@qobly/microscope-client`), with `Express` and `NestJS` integrations.
@@ -50,7 +50,7 @@ data to a backend.
 ## Using the Go module directly (in-process)
 
 ```bash
-go get github.com/qobly/microscope
+go get github.com/opentoxic/microscope
 ```
 
 ```go

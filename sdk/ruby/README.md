@@ -1,6 +1,6 @@
 # microscope_client (Ruby)
 
-Thin HTTP client for the [microscope](https://github.com/qobly/microscope) observability API.
+Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 No dependencies beyond Ruby's standard library.
 
 ## Install
