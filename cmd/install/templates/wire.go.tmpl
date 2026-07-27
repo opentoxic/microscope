@@ -1,0 +1,31 @@
+package microscope
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+	"os"
+
+	"github.com/opentoxic/microscope"
+)
+
+// Wire mounts microscope using the one-call Setup API.
+// Call from your application bootstrap after loading config.
+func Wire(ctx context.Context, log *slog.Logger, dsn string) (*microscope.SetupResult, http.Handler, error) {
+	ms, err := microscope.Setup(ctx, microscope.SetupOptions{
+		AppEnv: os.Getenv("APP_ENV"),
+		DSN:    dsn,
+		Logger: log,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	mux := http.NewServeMux()
+	ms.RegisterRoutes(mux)
+
+	handler := ms.HTTPHandler(mux, microscope.HTTPOptions{
+		AccessLog: microscope.SimpleAccessLog(ms.Logger),
+	})
+	return ms, handler, nil
+}
