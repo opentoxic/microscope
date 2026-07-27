@@ -1,8 +1,9 @@
-import type { Entry, EntryDetailResponse, EntryType, ListResult, LLMInsightResponse, SignalSetting } from '../types'
-import { demoDetail, demoEntries, demoList, demoSettings } from '../demo'
+import type { Entry, EntryDetailResponse, EntryType, ListResult, LLMInsightResponse, SignalSetting, StorageUsage } from '../types'
+import { demoDetail, demoEntries, demoList, demoSettings, demoStorageUsage } from '../demo'
 
 const API = '/microscope/api'
 export const demoMode = import.meta.env.VITE_DEMO_MODE === 'true'
+let demoRecordingPaused = false
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(API + path, init)
@@ -31,6 +32,28 @@ export function pruneEntries() {
 export function getSignalSettings() {
   if (demoMode) return Promise.resolve({ settings: demoSettings() })
   return request<{ settings: SignalSetting[] }>('/settings')
+}
+
+export function getStorageUsage() {
+  if (demoMode) return Promise.resolve(demoStorageUsage())
+  return request<StorageUsage>('/storage')
+}
+
+export function getRecordingState() {
+  if (demoMode) return Promise.resolve({ paused: demoRecordingPaused })
+  return request<{ paused: boolean }>('/recording')
+}
+
+export function setRecordingPaused(paused: boolean) {
+  if (demoMode) {
+    demoRecordingPaused = paused
+    return Promise.resolve({ paused: demoRecordingPaused })
+  }
+  return request<{ paused: boolean }>('/recording', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ paused }),
+  })
 }
 
 export function updateSignalSetting(type: EntryType, enabled: boolean) {
@@ -77,12 +100,13 @@ export function createCustomEntry(name: string, content: Record<string, unknown>
 export function subscribeEntries(
   onEntry: (entry: Entry) => void,
   onState?: (connected: boolean) => void,
-  onControl?: (event: { action: string; type?: EntryType; deleted: number }) => void,
+  onControl?: (event: { action: string; type?: EntryType; deleted: number; paused?: boolean }) => void,
 ) {
   if (demoMode) {
     onState?.(true)
     let index = 0
     const timer = window.setInterval(() => {
+      if (demoRecordingPaused) return
       const source = demoEntries[index++ % demoEntries.length]
       onEntry({ ...source, id: `${source.id}-live-${index}`, created_at: new Date().toISOString() })
     }, 6000)

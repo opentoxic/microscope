@@ -39,6 +39,16 @@ export interface SignalSetting {
   count: number
 }
 
+export interface StorageUsage {
+  entries_mb: number
+  entries_data_mb: number
+  entries_indexes_mb: number
+  settings_mb: number
+  migrations_mb: number
+  total_mb: number
+  entry_count: number
+}
+
 export interface LLMInsightFinding {
   title: string
   detail: string

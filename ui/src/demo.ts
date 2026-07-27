@@ -1,4 +1,4 @@
-import type { BatchTypeGroup, ContentTab, Entry, EntryDetailResponse, EntryType, ListResult, SignalSetting } from './types'
+import type { BatchTypeGroup, ContentTab, Entry, EntryDetailResponse, EntryType, ListResult, SignalSetting, StorageUsage } from './types'
 
 const now = Date.now()
 const languages = ['go', 'python', 'node', 'php', 'ruby', 'elixir']
@@ -76,5 +76,18 @@ export function demoDetail(id: string): EntryDetailResponse {
 
 export function demoSettings(): SignalSetting[] {
   return types.map(type => ({ type, enabled: true, count: demoEntries.filter(entry => entry.type === type).length }))
+}
+
+export function demoStorageUsage(): StorageUsage {
+  const entries = demoEntries.length
+  return {
+    entries_mb: 4.28,
+    entries_data_mb: 3.42,
+    entries_indexes_mb: 0.86,
+    settings_mb: 0.01,
+    migrations_mb: 0.03,
+    total_mb: 4.32,
+    entry_count: entries,
+  }
 }
 
