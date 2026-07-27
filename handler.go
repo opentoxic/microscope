@@ -25,6 +25,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+prefix+"/api/storage", h.getStorageUsage)
 	mux.HandleFunc("GET "+prefix+"/api/recording", h.getRecordingState)
 	mux.HandleFunc("PUT "+prefix+"/api/recording", h.setRecordingState)
+	mux.HandleFunc("GET "+prefix+"/api/redaction", h.getRedactionState)
+	mux.HandleFunc("PUT "+prefix+"/api/redaction", h.setRedactionState)
 	mux.HandleFunc("GET "+prefix+"/api/settings", h.listSettings)
 	mux.HandleFunc("PUT "+prefix+"/api/settings/{type}", h.updateSetting)
 	mux.HandleFunc("POST "+prefix+"/api/insights/analyze", h.analyzeInsights)
@@ -62,7 +64,7 @@ func (h *Handler) createCustomEntry(w http.ResponseWriter, r *http.Request) {
 		ID:        entryID,
 		Type:      TypeCustom,
 		Tags:      []string{"custom:" + input.Name},
-		Content:   RedactMap(content),
+		Content:   h.Hub.SanitizeMap(content),
 		CreatedAt: time.Now().UTC(),
 	})
 	writeJSON(w, http.StatusAccepted, map[string]string{"id": entryID})
@@ -92,6 +94,26 @@ func (h *Handler) setRecordingState(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Hub.SetRecordingPaused(*input.Paused)
 	writeJSON(w, http.StatusOK, map[string]bool{"paused": h.Hub.RecordingPaused()})
+}
+
+func (h *Handler) getRedactionState(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"enabled": h.Hub.RedactSensitive()})
+}
+
+func (h *Handler) setRedactionState(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	var input struct {
+		Enabled *bool `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || input.Enabled == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "enabled must be a boolean"})
+		return
+	}
+	if err := h.Hub.SetRedactSensitive(*input.Enabled); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"enabled": h.Hub.RedactSensitive()})
 }
 
 func (h *Handler) listSettings(w http.ResponseWriter, r *http.Request) {
