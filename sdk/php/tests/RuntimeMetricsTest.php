@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope\Tests;
+namespace Opentoxic\Microscope\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Qobly\Microscope\RuntimeMetrics;
+use Opentoxic\Microscope\RuntimeMetrics;
 
 final class RuntimeMetricsTest extends TestCase
 {

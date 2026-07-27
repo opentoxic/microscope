@@ -1,12 +1,12 @@
 # Laravel integration
 
-Included in `qobly/microscope-client` — no separate package needed. Laravel's package
+Included in `opentoxic/microscope-client` — no separate package needed. Laravel's package
 auto-discovery registers `MicroscopeServiceProvider` automatically once the package is required.
 
 ## Setup
 
 ```bash
-composer require qobly/microscope-client
+composer require opentoxic/microscope-client
 ```
 
 ```
@@ -25,7 +25,7 @@ php artisan vendor:publish --tag=microscope-config
 Register the middleware in `bootstrap/app.php` (Laravel 11+) or `App\Http\Kernel` (Laravel 10):
 
 ```php
-$middleware->append(\Qobly\Microscope\Laravel\RecordRequests::class);
+$middleware->append(\Opentoxic\Microscope\Laravel\RecordRequests::class);
 ```
 
 ## Record custom entries
@@ -33,7 +33,7 @@ $middleware->append(\Qobly\Microscope\Laravel\RecordRequests::class);
 Resolve `MicroscopeClient` from the container anywhere:
 
 ```php
-use Qobly\Microscope\MicroscopeClient;
+use Opentoxic\Microscope\MicroscopeClient;
 
 app(MicroscopeClient::class)->record('payment_charged', ['amount' => 4200]);
 ```

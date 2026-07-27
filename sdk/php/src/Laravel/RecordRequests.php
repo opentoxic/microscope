@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope\Laravel;
+namespace Opentoxic\Microscope\Laravel;
 
 use Closure;
 use Illuminate\Http\Request;
-use Qobly\Microscope\MicroscopeClient;
+use Opentoxic\Microscope\MicroscopeClient;
 use Symfony\Component\HttpFoundation\Response;
 
 final class RecordRequests

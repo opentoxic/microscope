@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope\Laravel;
+namespace Opentoxic\Microscope\Laravel;
 
 use Illuminate\Support\ServiceProvider;
-use Qobly\Microscope\MicroscopeClient;
+use Opentoxic\Microscope\MicroscopeClient;
 
 final class MicroscopeServiceProvider extends ServiceProvider
 {
