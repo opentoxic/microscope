@@ -3,9 +3,11 @@ package microscope
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -19,6 +21,8 @@ type Store interface {
 	ClearAll(ctx context.Context) (int64, error)
 	ListTypeSettings(ctx context.Context) ([]TypeSetting, error)
 	SetTypeEnabled(ctx context.Context, entryType EntryType, enabled bool) (int64, error)
+	GetOption(ctx context.Context, key string) (json.RawMessage, error)
+	SetOption(ctx context.Context, key string, value json.RawMessage) error
 	StorageUsage(ctx context.Context) (StorageUsage, error)
 }
 
@@ -267,6 +271,31 @@ func (s *PostgresStore) SetTypeEnabled(ctx context.Context, entryType EntryType,
 		return 0, err
 	}
 	return deleted, nil
+}
+
+func (s *PostgresStore) GetOption(ctx context.Context, key string) (json.RawMessage, error) {
+	var value json.RawMessage
+	err := s.pool.QueryRow(ctx, `
+		SELECT value FROM microscope_options WHERE key = $1`, key,
+	).Scan(&value)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return value, nil
+}
+
+func (s *PostgresStore) SetOption(ctx context.Context, key string, value json.RawMessage) error {
+	_, err := s.pool.Exec(ctx, `
+		INSERT INTO microscope_options (key, value, updated_at)
+		VALUES ($1, $2, NOW())
+		ON CONFLICT (key) DO UPDATE
+		SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at`,
+		key, value,
+	)
+	return err
 }
 
 func entryTypeStrings() []string {
