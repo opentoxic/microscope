@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getEntry } from '../api/client'
 import type { Entry, EntryDetailResponse } from '../types'
+import { activeDetailEntryType } from '../detailContext'
 import AppShell from '../components/AppShell.vue'
 import Badge from '../components/Badge.vue'
 import ContentTabs from '../components/ContentTabs.vue'
@@ -11,7 +12,7 @@ import EntryInsight from '../components/EntryInsight.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
 import SqlInspector from '../components/SqlInspector.vue'
-import { entryDuration, entryMeta, entrySignalColor, formatRecordDate, formatRecordTime, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
+import { entryDuration, entryMeta, entrySignalColor, formatRecordDate, formatRecordTime, formatTimeLong, isError, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
 import { llmSettings } from '../llmSettings'
 import { signalEnabled } from '../settings'
 
@@ -23,6 +24,7 @@ const comparison = ref<EntryDetailResponse | null>(null)
 const loading = ref(true)
 const error = ref('')
 const copied = ref(false)
+const copiedField = ref('')
 const bookmarked = ref(false)
 
 const title = computed(() => data.value ? summarize(data.value.entry) : '')
@@ -37,8 +39,21 @@ const totalDuration = computed(() => Math.max(
 ))
 const queryCount = computed(() => timeline.value.filter(entry => entry.type === 'query').length)
 const errorCount = computed(() => timeline.value.filter(entry => entry.type === 'exception').length)
+const timelineLegend = computed(() => {
+  const counts = new Map<string, number>()
+  for (const entry of timeline.value) counts.set(entry.type, (counts.get(entry.type) || 0) + 1)
+  return [...counts.entries()]
+    .map(([type, count]) => ({
+      type,
+      count,
+      color: signalFor(type).color,
+      label: signalFor(type).shortLabel,
+    }))
+    .sort((a, b) => b.count - a.count)
+})
 
 onMounted(async () => {
+  activeDetailEntryType.value = ''
   try {
     const compareID = String(route.query.compare || '')
     const [primary, secondary] = await Promise.all([
@@ -53,6 +68,18 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+})
+
+watch(data, (val) => {
+  activeDetailEntryType.value = val?.entry?.type || ''
+})
+
+watch(() => props.id, () => {
+  activeDetailEntryType.value = ''
+})
+
+onBeforeUnmount(() => {
+  activeDetailEntryType.value = ''
 })
 
 function loadBookmarks(): string[] {
@@ -70,6 +97,13 @@ async function copyID() {
   await navigator.clipboard.writeText(props.id)
   copied.value = true
   setTimeout(() => { copied.value = false }, 1400)
+}
+
+async function copyField(label: string, value: string) {
+  if (!value || value === 'not linked') return
+  await navigator.clipboard.writeText(value)
+  copiedField.value = label
+  setTimeout(() => { if (copiedField.value === label) copiedField.value = '' }, 1400)
 }
 
 async function fullscreen() {
@@ -109,24 +143,51 @@ function openTimelineEntry(entry: Entry) {
     </div>
 
     <div v-else-if="data" class="trace-workspace">
-      <header class="trace-heading" :style="{ '--signal': entrySignalColor(data.entry) }">
-        <div class="trace-heading__identity">
-          <span class="trace-symbol"><SignalIcon :type="data.entry.type" size="lg" /></span>
-          <div>
-            <div class="trace-badges">
-              <Badge :label="data.entry.type" :class-name="typeBadgeClass(data.entry.type)" />
-              <Badge v-if="data.entry.type === 'request'" :label="String(data.entry.content?.method || 'GET')" :class-name="methodClass(String(data.entry.content?.method || ''))" />
-              <Badge v-if="data.entry.type === 'request'" :label="String(data.entry.content?.status || '—')" :class-name="statusClass(data.entry.content?.status)" />
-              <span>{{ formatTimeLong(data.entry.created_at) }}</span>
+      <header class="trace-hero" :style="{ '--signal': entrySignalColor(data.entry) }">
+        <div class="trace-hero__sheen" aria-hidden="true" />
+        <div class="trace-hero__main">
+          <button type="button" class="trace-back" @click="router.push('/')">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12 5 7 10l5 5"/></svg>
+            <span>Live activity</span>
+          </button>
+          <div class="trace-heading__identity">
+            <span class="trace-symbol"><SignalIcon :type="data.entry.type" size="lg" /></span>
+            <div class="trace-heading__copy">
+              <div class="trace-badges">
+                <Badge :label="data.entry.type" :class-name="typeBadgeClass(data.entry.type)" />
+                <Badge v-if="data.entry.type === 'request'" :label="String(data.entry.content?.method || 'GET')" :class-name="methodClass(String(data.entry.content?.method || ''))" />
+                <Badge v-if="data.entry.type === 'request'" :label="String(data.entry.content?.status || '—')" :class-name="statusClass(data.entry.content?.status)" />
+                <span class="trace-timestamp">{{ formatTimeLong(data.entry.created_at) }}</span>
+              </div>
+              <h1>{{ title }}</h1>
             </div>
-            <h1>{{ title }}</h1>
           </div>
         </div>
-        <div class="trace-heading__tools">
-          <button @click="copyID">
-            <span>{{ copied ? 'Copied' : data.entry.id.slice(0, 8) }}</span>
-            <svg viewBox="0 0 20 20"><rect x="7" y="7" width="9" height="9" rx="1"/><path d="M13 7V4H4v9h3"/></svg>
-          </button>
+        <div class="trace-hero__aside">
+          <div class="trace-hero-stats">
+            <span class="trace-hero-stat">
+              <small>Duration</small>
+              <strong>{{ entryDuration(data.entry) || '—' }}<i v-if="entryDuration(data.entry)">ms</i></strong>
+            </span>
+            <span class="trace-hero-stat">
+              <small>Records</small>
+              <strong>{{ timeline.length }}</strong>
+            </span>
+            <span class="trace-hero-stat" :class="{ 'is-hot': queryCount > 0 }">
+              <small>SQL</small>
+              <strong>{{ queryCount }}</strong>
+            </span>
+            <span class="trace-hero-stat" :class="{ 'is-danger': errorCount > 0 }">
+              <small>Errors</small>
+              <strong>{{ errorCount }}</strong>
+            </span>
+          </div>
+          <div class="trace-heading__tools">
+            <button type="button" class="trace-id-btn" :class="{ copied: copied }" @click="copyID">
+              <span>{{ copied ? 'Copied' : data.entry.id.slice(0, 8) }}</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="7" y="7" width="9" height="9" rx="1"/><path d="M13 7V4H4v9h3"/></svg>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -160,53 +221,146 @@ function openTimelineEntry(entry: Entry) {
       />
 
       <div class="inspector-grid">
-        <aside class="execution-map">
-          <header>
-            <div><span>Execution map</span><small>{{ timeline.length }} records</small></div>
-            <strong>{{ totalDuration }}ms</strong>
+        <aside class="execution-map" :style="{ '--map-signal': entrySignalColor(data.entry) }">
+          <header class="execution-map__header">
+            <div class="execution-map__title">
+              <span class="panel-label">
+                <i class="panel-label__mark" aria-hidden="true" />
+                Execution map
+              </span>
+              <small>{{ timeline.length }} records · chronological</small>
+            </div>
+            <div class="execution-map__duration">
+              <small>wall time</small>
+              <strong>{{ totalDuration }}<i>ms</i></strong>
+            </div>
           </header>
-          <div class="time-ruler"><span>0</span><span>25%</span><span>50%</span><span>75%</span><span>{{ totalDuration }}ms</span></div>
+
+          <div class="time-ruler" aria-hidden="true">
+            <div class="time-ruler__track">
+              <span class="time-ruler__fill" :style="{ width: '100%' }" />
+              <span v-for="tick in [0, 25, 50, 75, 100]" :key="tick" class="time-ruler__tick" :style="{ left: `${tick}%` }" />
+            </div>
+            <div class="time-ruler__labels">
+              <span>0</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>{{ totalDuration }}ms</span>
+            </div>
+          </div>
+
           <div class="timeline-list">
             <button
-              v-for="entry in timeline"
+              v-for="(entry, index) in timeline"
               :key="entry.id"
-              :class="{ active: entry.id === data.entry.id }"
-              :style="{ '--signal': entrySignalColor(entry) }"
+              :class="{ active: entry.id === data.entry.id, error: isError(entry) }"
+              :style="{
+                '--signal': entrySignalColor(entry),
+                '--row-delay': `${index * 35}ms`,
+              }"
               @click="openTimelineEntry(entry)"
             >
+              <span class="timeline-signal-stripe" aria-hidden="true" />
+              <span class="timeline-index">{{ String(index + 1).padStart(2, '0') }}</span>
               <span class="timeline-moment" :title="formatTimeLong(entry.created_at)">
                 <strong>{{ formatRecordTime(entry.created_at) }}</strong>
                 <small>{{ formatRecordDate(entry.created_at) }}</small>
               </span>
               <span class="timeline-node"><SignalIcon :type="entry.type" size="sm" /></span>
-              <span class="timeline-copy"><strong>{{ signalFor(entry.type).shortLabel }}</strong><small>{{ summarize(entry) }}</small></span>
+              <span class="timeline-copy">
+                <strong>{{ signalFor(entry.type).shortLabel }}</strong>
+                <small>{{ summarize(entry) }}</small>
+              </span>
               <span class="timeline-cost">{{ entryDuration(entry) ? `${entryDuration(entry)}ms` : '—' }}</span>
-              <span class="timeline-bar"><i :style="{ width: timelineWidth(entry) }" /></span>
+              <span class="timeline-bar" aria-hidden="true"><i :style="{ width: timelineWidth(entry) }" /></span>
             </button>
           </div>
-          <footer>
-            <span><i style="background: var(--blue)" /> HTTP</span>
-            <span><i style="background: var(--green)" /> SQL</span>
-            <span><i style="background: var(--crimson)" /> Error</span>
+
+          <footer class="execution-map__legend">
+            <span
+              v-for="item in timelineLegend"
+              :key="item.type"
+              class="execution-map__legend-item"
+              :style="{ '--legend': item.color }"
+            >
+              <i aria-hidden="true" />
+              {{ item.label }}
+              <b>{{ item.count }}</b>
+            </span>
           </footer>
         </aside>
 
         <div class="inspection-stage">
           <section class="trace-vitals">
-            <div><span>Wall time</span><strong>{{ entryDuration(data.entry) || '—' }}<small v-if="entryDuration(data.entry)">ms</small></strong><i><b :style="{ width: `${Math.min(100, entryDuration(data.entry) / 10)}%` }" /></i></div>
-            <div><span>SQL queries</span><strong>{{ queryCount }}</strong><small>in this trace</small></div>
-            <div v-if="signalEnabled('metric')"><span>Memory</span><strong>{{ data.entry.content?.memory_mb || '—' }}<small v-if="data.entry.content?.memory_mb">MB</small></strong><small>peak allocation</small></div>
-            <div v-if="signalEnabled('metric')"><span>{{ data.entry.type === 'metric' ? metricUnitLabel(data.entry) : 'Concurrency' }}</span><strong>{{ data.entry.content?.value ?? '—' }}</strong><small v-if="data.entry.type === 'metric'">{{ metricLanguageLabel(data.entry) }}</small><small v-else>at completion</small></div>
-            <div><span>Exceptions</span><strong :class="{ danger: errorCount }">{{ errorCount }}</strong><small>related records</small></div>
+            <div class="trace-vital trace-vital--primary">
+              <span>Wall time</span>
+              <strong>{{ entryDuration(data.entry) || '—' }}<small v-if="entryDuration(data.entry)">ms</small></strong>
+              <i class="trace-vital-bar"><b :style="{ width: `${Math.min(100, entryDuration(data.entry) / 10)}%` }" /></i>
+              <small>recorded span</small>
+            </div>
+            <div class="trace-vital" :class="{ 'is-hot': queryCount > 5 }">
+              <span>SQL queries</span>
+              <strong>{{ queryCount }}</strong>
+              <small>in this trace</small>
+            </div>
+            <div v-if="signalEnabled('metric')" class="trace-vital">
+              <span>Memory</span>
+              <strong>{{ data.entry.content?.memory_mb || '—' }}<small v-if="data.entry.content?.memory_mb">MB</small></strong>
+              <small>peak allocation</small>
+            </div>
+            <div v-if="signalEnabled('metric')" class="trace-vital">
+              <span>{{ data.entry.type === 'metric' ? metricUnitLabel(data.entry) : 'Concurrency' }}</span>
+              <strong>{{ data.entry.content?.value ?? '—' }}</strong>
+              <small v-if="data.entry.type === 'metric'">{{ metricLanguageLabel(data.entry) }}</small>
+              <small v-else>at completion</small>
+            </div>
+            <div class="trace-vital" :class="{ 'is-danger': errorCount > 0 }">
+              <span>Exceptions</span>
+              <strong>{{ errorCount }}</strong>
+              <small>related records</small>
+            </div>
           </section>
 
           <section class="trace-facts">
-            <header><span>Trace context</span><small>immutable recording</small></header>
+            <header>
+              <span>Trace context</span>
+              <small>immutable recording · click to copy IDs</small>
+            </header>
             <div class="fact-grid">
-              <div><span>Entry</span><strong>{{ data.entry.id }}</strong></div>
-              <div><span>Request</span><strong>{{ data.entry.request_id || 'not linked' }}</strong></div>
-              <div><span>Correlation</span><strong>{{ data.entry.correlation_id || 'not linked' }}</strong></div>
-              <div><span>Origin</span><strong>{{ data.entry.content?.ip || entryMeta(data.entry) }}</strong></div>
+              <button
+                type="button"
+                class="fact-cell"
+                :class="{ copied: copiedField === 'entry' }"
+                @click="copyField('entry', data.entry.id)"
+              >
+                <span>Entry</span>
+                <strong>{{ data.entry.id }}</strong>
+              </button>
+              <button
+                type="button"
+                class="fact-cell"
+                :class="{ copied: copiedField === 'request', muted: !data.entry.request_id }"
+                :disabled="!data.entry.request_id"
+                @click="copyField('request', data.entry.request_id || '')"
+              >
+                <span>Request</span>
+                <strong>{{ data.entry.request_id || 'not linked' }}</strong>
+              </button>
+              <button
+                type="button"
+                class="fact-cell"
+                :class="{ copied: copiedField === 'correlation', muted: !data.entry.correlation_id }"
+                :disabled="!data.entry.correlation_id"
+                @click="copyField('correlation', data.entry.correlation_id || '')"
+              >
+                <span>Correlation</span>
+                <strong>{{ data.entry.correlation_id || 'not linked' }}</strong>
+              </button>
+              <div class="fact-cell is-static">
+                <span>Origin</span>
+                <strong>{{ data.entry.content?.ip || entryMeta(data.entry) }}</strong>
+              </div>
             </div>
           </section>
 
@@ -248,7 +402,12 @@ function openTimelineEntry(entry: Entry) {
         </div>
       </div>
 
-      <RelatedTabs v-if="data.batch_groups?.length" :groups="data.batch_groups" :active-type="data.related_active_tab" />
+      <RelatedTabs
+        v-if="data.batch_groups?.length"
+        :groups="data.batch_groups"
+        :active-type="data.related_active_tab"
+        :current-id="data.entry.id"
+      />
     </div>
   </AppShell>
 </template>
