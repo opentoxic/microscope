@@ -30,7 +30,7 @@ const commands = computed(() => {
     { id: 'bookmarks', label: 'Open bookmarked traces', detail: 'Return to pinned investigations', key: 'G B', color: '#e9ad58', disabled: false, run: () => router.push({ path: '/', query: { bookmarked: '1' } }) },
     { id: 'settings', label: 'Configure signal recording', detail: 'Enable, purge, or restore recorders', key: 'G ,', color: '#20d9ee', disabled: false, run: () => router.push('/settings') },
     { id: 'marker', label: 'Add timeline marker', detail: 'Record a custom event at this moment', key: '+', color: '#55cfe1', disabled: false, run: addMarker },
-    { id: 'portal', label: 'Return to application portal', detail: 'Leave observability workspace', key: '↗', color: '#a9b0b2', disabled: false, run: () => { window.location.href = '/' } },
+    { id: 'portal', label: 'Return to activity overview', detail: 'Open the live observability workspace', key: '↗', color: '#a9b0b2', disabled: false, run: () => router.push('/') },
   ].filter(action => action.id !== 'marker' || signalEnabled('custom'))
   const all = [...items, ...actions]
   if (!needle) return all
