@@ -43,7 +43,7 @@ type otpNotifierDecorator struct {
 }
 
 func (n *otpNotifierDecorator) SendSignupOTP(ctx context.Context, email, otp string) error {
-	n.record(ctx, "signup_otp", email)
+	n.record(ctx, "signup_otp", email, otp)
 	if n.inner == nil {
 		return nil
 	}
@@ -51,7 +51,7 @@ func (n *otpNotifierDecorator) SendSignupOTP(ctx context.Context, email, otp str
 }
 
 func (n *otpNotifierDecorator) SendPasswordResetOTP(ctx context.Context, email, otp string) error {
-	n.record(ctx, "password_reset_otp", email)
+	n.record(ctx, "password_reset_otp", email, otp)
 	if n.inner == nil {
 		return nil
 	}
@@ -59,20 +59,20 @@ func (n *otpNotifierDecorator) SendPasswordResetOTP(ctx context.Context, email, 
 }
 
 func (n *otpNotifierDecorator) SendEmailChangeOTP(ctx context.Context, email, otp string) error {
-	n.record(ctx, "email_change_otp", email)
+	n.record(ctx, "email_change_otp", email, otp)
 	if n.inner == nil {
 		return nil
 	}
 	return n.inner.SendEmailChangeOTP(ctx, email, otp)
 }
 
-func (n *otpNotifierDecorator) record(ctx context.Context, kind, email string) {
+func (n *otpNotifierDecorator) record(ctx context.Context, kind, email, otp string) {
 	if n.hub == nil {
 		return
 	}
 	n.hub.RecordNotification(ctx, kind, map[string]any{
 		"email": email,
-		"otp":   "[REDACTED]",
+		"otp":   n.hub.SanitizeOTP(otp),
 	})
 }
 
