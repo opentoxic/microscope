@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import type { Entry } from '../types'
 import Badge from './Badge.vue'
 import SignalIcon from './SignalIcon.vue'
-import { entryDuration, entryMeta, entrySignalColor, formatClock, isError, methodClass, signalFor, statusClass, summarize, timeAgo } from '../utils'
+import { entryDuration, entryMeta, entrySignalColor, formatRecordDate, formatRecordTime, formatTimeLong, isError, methodClass, signalFor, statusClass, summarize, timeAgo } from '../utils'
 
 const props = defineProps<{ entries: Entry[]; currentType: string }>()
 const router = useRouter()
@@ -64,23 +64,27 @@ function onKey(event: KeyboardEvent) {
       @dblclick="openEntry(entry.id)"
       @keydown.enter="openEntry(entry.id)"
     >
-      <div class="activity-time">
-        <strong>{{ formatClock(entry.created_at) }}</strong>
-        <span>{{ timeAgo(entry.created_at) }}</span>
+      <div class="activity-time" :title="formatTimeLong(entry.created_at)">
+        <time :datetime="entry.created_at">
+          <span class="activity-date">{{ formatRecordDate(entry.created_at) }}</span>
+          <strong>{{ formatRecordTime(entry.created_at) }}</strong>
+          <em>{{ timeAgo(entry.created_at) }}</em>
+        </time>
       </div>
-      <div class="activity-thread">
+      <div class="activity-thread" aria-hidden="true">
+        <span class="activity-rail" />
         <span class="activity-node"><SignalIcon :type="entry.type" size="sm" /></span>
       </div>
       <div class="activity-main" @click="openEntry(entry.id)">
-        <div class="activity-title">
+        <div class="activity-head">
           <span class="activity-kind">{{ signalFor(entry.type).shortLabel }}</span>
           <Badge v-if="entry.type === 'request'" :label="String(entry.content?.method || 'GET')" :class-name="methodClass(String(entry.content?.method || ''))" />
-          <strong>{{ summarize(entry) }}</strong>
+          <strong class="activity-summary">{{ summarize(entry) }}</strong>
         </div>
-        <div class="activity-context">
-          <span>{{ entryMeta(entry) }}</span>
-          <span v-if="entry.request_id">req·{{ entry.request_id.slice(0, 8) }}</span>
-          <span v-if="entry.tags?.length">{{ entry.tags.slice(0, 2).join(' · ') }}</span>
+        <div v-if="entryMeta(entry) || entry.request_id || entry.tags?.length" class="activity-context">
+          <span v-if="entryMeta(entry)" class="activity-chip">{{ entryMeta(entry) }}</span>
+          <span v-if="entry.request_id" class="activity-chip is-muted">req·{{ entry.request_id.slice(0, 8) }}</span>
+          <span v-for="tag in (entry.tags || []).slice(0, 2)" :key="tag" class="activity-chip is-tag">{{ tag }}</span>
         </div>
       </div>
       <div class="activity-metric">
