@@ -3,16 +3,25 @@
   "version": "0.1.0",
   "description": "Thin HTTP client for the microscope observability API",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cjs/index.js",
+  "types": "dist/esm/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./express": "./dist/express.js",
-    "./nestjs": "./dist/nestjs.js"
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./express": {
+      "import": "./dist/esm/express.js",
+      "require": "./dist/cjs/express.js"
+    },
+    "./nestjs": {
+      "import": "./dist/esm/nestjs.js",
+      "require": "./dist/cjs/nestjs.js"
+    }
   },
   "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.esm.json && tsc -p tsconfig.cjs.json && echo '{\"type\":\"commonjs\"}' > dist/cjs/package.json",
     "test": "node --test test/"
   },
   "license": "MIT",
