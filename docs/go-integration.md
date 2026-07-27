@@ -77,7 +77,7 @@ source, err := msmigrate.Source()
 
 Or call `microscope.MigrateUp(ctx, pool)` directly.
 
-Migration files: `001_microscope.up.sql`, `002_microscope_settings.up.sql`.
+Migration files: `001_microscope.up.sql`, `002_microscope_settings.up.sql`, `003_microscope_options.up.sql`.
 
 ## Configuration
 
@@ -89,6 +89,9 @@ Migration files: `001_microscope.up.sql`, `002_microscope_settings.up.sql`.
 | `MICROSCOPE_MAX_BODY_BYTES` | `65536` | Max captured request body |
 | `MICROSCOPE_ALLOWED_ENVS` | `development,local` | Comma-separated app envs |
 | `MICROSCOPE_AUTO_MIGRATE` | `true` | Run migrations on Setup |
+| `MICROSCOPE_REDACT_SENSITIVE` | `false` | Mask sensitive fields before storage |
+
+By default Microscope stores full dev payloads. Set `MICROSCOPE_REDACT_SENSITIVE=true` or use Settings → Recording → **Redact sensitive data** to restore masked capture.
 
 YAML config can be merged:
 
