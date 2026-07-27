@@ -8,6 +8,13 @@ type Config struct {
 	Path           string
 	RetentionHours int
 	MaxBodyBytes   int
+	AllowedEnvs    []string
+	AutoMigrate    bool
+}
+
+// DefaultAllowedEnvs lists app environments where microscope may run.
+func DefaultAllowedEnvs() []string {
+	return []string{"development", "local"}
 }
 
 // DefaultConfig returns sensible development defaults.
@@ -17,6 +24,8 @@ func DefaultConfig() Config {
 		Path:           "/microscope",
 		RetentionHours: 24,
 		MaxBodyBytes:   65536,
+		AllowedEnvs:    DefaultAllowedEnvs(),
+		AutoMigrate:    true,
 	}
 }
 
