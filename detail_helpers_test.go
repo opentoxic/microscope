@@ -35,6 +35,18 @@ func TestEntryContentTabsRequest(t *testing.T) {
 	}
 }
 
+func TestLooksLikeJSONRequiresValidDocument(t *testing.T) {
+	if !looksLikeJSON(`{"status":"ready","items":[1,2]}`) {
+		t.Fatal("expected valid object to be detected as JSON")
+	}
+	if !looksLikeJSON(`[{"id":1}]`) {
+		t.Fatal("expected valid array to be detected as JSON")
+	}
+	if looksLikeJSON(`{"status":`) {
+		t.Fatal("malformed object must not be marked as JSON")
+	}
+}
+
 func TestBatchGroupSummaryQueries(t *testing.T) {
 	now := time.Now().UTC()
 	summary := batchGroupSummary(BatchTypeGroup{

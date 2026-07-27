@@ -1,15 +1,43 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 const props = defineProps<{ body: string }>()
 const mode = ref<'tree' | 'raw'>('tree')
 const query = ref('')
-const expanded = ref(new Set<string>(['root']))
+const expanded = ref(new Set<string>())
 const copied = ref(false)
 
-const parsed = computed<unknown>(() => {
-  try { return JSON.parse(props.body) } catch { return props.body }
-})
+interface ParseResult {
+  value: unknown
+  error: string
+  decodedLayers: number
+}
+
+function parseBody(body: string): ParseResult {
+  let value: unknown = body
+  let layers = 0
+  try {
+    value = JSON.parse(body.replace(/^\uFEFF/, '').trim())
+    layers++
+    // Some SDKs deliver a JSON document inside a JSON string. Decode those layers too.
+    while (typeof value === 'string' && layers < 4) {
+      const candidate = value.trim()
+      if (!candidate.startsWith('{') && !candidate.startsWith('[') && !candidate.startsWith('"')) break
+      value = JSON.parse(candidate)
+      layers++
+    }
+    return { value, error: '', decodedLayers: layers }
+  } catch (error) {
+    return {
+      value: body,
+      error: error instanceof Error ? error.message : 'Invalid JSON document',
+      decodedLayers: layers,
+    }
+  }
+}
+
+const parsed = computed(() => parseBody(props.body))
+const isValid = computed(() => !parsed.value.error)
 
 interface Row {
   path: string
@@ -22,29 +50,56 @@ interface Row {
 
 function children(value: unknown): Array<[string, unknown]> {
   if (Array.isArray(value)) return value.map((item, index) => [String(index), item])
-  if (value && typeof value === 'object') return Object.entries(value as Record<string, unknown>)
+  if (value !== null && typeof value === 'object') return Object.entries(value as Record<string, unknown>)
   return []
 }
 
-const rows = computed(() => {
+function pathFor(parent: string, key: string) {
+  return `${parent}/${key.replaceAll('~', '~0').replaceAll('/', '~1')}`
+}
+
+function allRows(): Row[] {
   const result: Row[] = []
-  const walk = (key: string, value: unknown, path: string, depth: number) => {
+  const walk = (key: string, value: unknown, path: string, depth: number, respectExpansion: boolean) => {
     const expandable = children(value).length > 0
     const isExpanded = expanded.value.has(path)
     result.push({ path, key, value, depth, expandable, expanded: isExpanded })
-    if (expandable && isExpanded) children(value).forEach(([childKey, child]) => walk(childKey, child, `${path}.${childKey}`, depth + 1))
+    if (expandable && (!respectExpansion || isExpanded)) {
+      children(value).forEach(([childKey, child]) => walk(childKey, child, pathFor(path, childKey), depth + 1, respectExpansion))
+    }
   }
-  walk('root', parsed.value, 'root', 0)
+
+  const rootChildren = children(parsed.value.value)
+  if (rootChildren.length) {
+    rootChildren.forEach(([key, value]) => walk(key, value, pathFor('', key), 0, !query.value.trim()))
+  } else {
+    walk('value', parsed.value.value, '/value', 0, !query.value.trim())
+  }
+  return result
+}
+
+const rows = computed(() => {
+  const result = allRows()
   const needle = query.value.trim().toLowerCase()
-  return needle
-    ? result.filter(row => `${row.path} ${displayValue(row.value)}`.toLowerCase().includes(needle))
-    : result
+  if (!needle) return result
+  return result.filter(row => `${row.key} ${row.path} ${displayValue(row.value)}`.toLowerCase().includes(needle))
 })
+
+watch(() => props.body, () => {
+  query.value = ''
+  mode.value = parseBody(props.body).error ? 'raw' : 'tree'
+  const next = new Set<string>()
+  children(parseBody(props.body).value).forEach(([key, value]) => {
+    if (children(value).length) next.add(pathFor('', key))
+  })
+  expanded.value = next
+}, { immediate: true })
 
 function displayValue(value: unknown) {
   if (Array.isArray(value)) return `Array(${value.length})`
-  if (value && typeof value === 'object') return `Object(${Object.keys(value).length})`
+  if (value !== null && typeof value === 'object') return `Object(${Object.keys(value).length})`
   if (typeof value === 'string') return `"${value}"`
+  if (value === null) return 'null'
   return String(value)
 }
 
@@ -65,14 +120,19 @@ function expandAll() {
   const walk = (value: unknown, path: string) => {
     if (!children(value).length) return
     next.add(path)
-    children(value).forEach(([key, child]) => walk(child, `${path}.${key}`))
+    children(value).forEach(([key, child]) => walk(child, pathFor(path, key)))
   }
-  walk(parsed.value, 'root')
+  children(parsed.value.value).forEach(([key, child]) => walk(child, pathFor('', key)))
   expanded.value = next
 }
 
+function collapseAll() {
+  expanded.value = new Set()
+}
+
 async function copy() {
-  await navigator.clipboard.writeText(props.body)
+  const formatted = isValid.value ? JSON.stringify(parsed.value.value, null, 2) : props.body
+  await navigator.clipboard.writeText(formatted)
   copied.value = true
   setTimeout(() => { copied.value = false }, 1400)
 }
@@ -81,19 +141,25 @@ async function copy() {
 <template>
   <div class="json-explorer">
     <div class="data-toolbar">
+      <div class="json-document-state" :class="{ invalid: !isValid }">
+        <i />
+        <span>{{ isValid ? 'Parsed JSON' : 'Invalid JSON' }}</span>
+        <small v-if="parsed.decodedLayers > 1">{{ parsed.decodedLayers }} layers decoded</small>
+      </div>
       <div class="view-switch">
-        <button :class="{ active: mode === 'tree' }" @click="mode = 'tree'">Tree</button>
-        <button :class="{ active: mode === 'raw' }" @click="mode = 'raw'">Raw</button>
+        <button :class="{ active: mode === 'tree' }" :disabled="!isValid" @click="mode = 'tree'">Tree</button>
+        <button :class="{ active: mode === 'raw' }" @click="mode = 'raw'">Source</button>
       </div>
       <label v-if="mode === 'tree'" class="data-search">
         <svg viewBox="0 0 20 20"><circle cx="8.5" cy="8.5" r="4.5"/><path d="m12 12 4 4"/></svg>
-        <input v-model="query" placeholder="Search keys or values" />
+        <input v-model="query" placeholder="Search every key and value" />
       </label>
-      <button v-if="mode === 'tree'" class="data-action" @click="expandAll">Expand all</button>
-      <button class="data-action" @click="copy">{{ copied ? 'Copied' : 'Copy JSON' }}</button>
+      <button v-if="mode === 'tree'" class="data-action" @click="expandAll">Expand</button>
+      <button v-if="mode === 'tree'" class="data-action" @click="collapseAll">Collapse</button>
+      <button class="data-action" @click="copy">{{ copied ? 'Copied' : 'Copy' }}</button>
     </div>
 
-    <div v-if="mode === 'tree'" class="json-tree">
+    <div v-if="mode === 'tree' && isValid" class="json-tree">
       <button
         v-for="row in rows"
         :key="row.path"
@@ -108,9 +174,11 @@ async function copy() {
         <span class="json-value" :class="`is-${valueType(row.value)}`">{{ displayValue(row.value) }}</span>
         <span class="json-path">{{ row.path }}</span>
       </button>
-      <div v-if="!rows.length" class="data-empty">No matching keys or values.</div>
+      <div v-if="!rows.length" class="data-empty">No keys or values match “{{ query }}”.</div>
     </div>
-    <pre v-else class="json-raw"><code>{{ body }}</code></pre>
+    <div v-else class="json-source">
+      <p v-if="parsed.error"><strong>Parser message</strong>{{ parsed.error }}</p>
+      <pre class="json-raw"><code>{{ isValid ? JSON.stringify(parsed.value, null, 2) : body }}</code></pre>
+    </div>
   </div>
 </template>
-
