@@ -89,7 +89,7 @@ func runInsightAnalysis(ctx context.Context, input insightRequest) (insightRespo
 
 func buildInsightPrompt(input insightRequest) string {
 	var b strings.Builder
-	b.WriteString("You are an observability analyst for a Go microservice runtime recorder called Signal.\n")
+	b.WriteString("You are an observability analyst for a Go microservice runtime recorder called Microscope.\n")
 	b.WriteString("Analyze the telemetry and return ONLY valid JSON with this exact schema:\n")
 	b.WriteString(`{"summary":"string","health_score":0-100,"findings":[{"title":"string","detail":"string","severity":"info|warning|critical"}],"recommendations":["string"],"metrics":{"error_rate":"string","avg_latency_ms":"number","dominant_signal":"string","risk_level":"string"},"signal_distribution":[{"type":"string","count":number,"pct":number}]}` + "\n")
 	if input.Context != "" {
@@ -163,11 +163,11 @@ func fallbackInsight(entries []insightEntry) insightResponse {
 		score = 72
 	}
 	findings := []insightFinding{
-		{Title: "Signal coverage", Detail: fmt.Sprintf("%d correlated records were included in this manual analysis window.", len(entries)), Severity: "info"},
+		{Title: "Microscope coverage", Detail: fmt.Sprintf("%d correlated records were included in this manual analysis window.", len(entries)), Severity: "info"},
 	}
 	if errors > 0 {
 		findings = append(findings, insightFinding{
-			Title: "Failure evidence detected", Detail: fmt.Sprintf("%d error-class signals were present in the submitted window.", errors), Severity: "critical",
+			Title: "Failure evidence detected", Detail: fmt.Sprintf("%d error-class records were present in the submitted window.", errors), Severity: "critical",
 		})
 	}
 	if avg >= 200 {
@@ -180,7 +180,7 @@ func fallbackInsight(entries []insightEntry) insightResponse {
 		recs = []string{"Open the earliest failure boundary", "Correlate exceptions with request and SQL evidence", "Validate downstream dependency health"}
 	}
 	return insightResponse{
-		Summary:            fmt.Sprintf("Manual analysis across %d signals shows %d error-class events and %.0fms average span cost.", len(entries), errors, avg),
+		Summary:            fmt.Sprintf("Manual analysis across %d records shows %d error-class events and %.0fms average span cost.", len(entries), errors, avg),
 		HealthScore:        score,
 		Findings:           findings,
 		Recommendations:    recs,

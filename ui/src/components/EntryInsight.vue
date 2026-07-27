@@ -29,7 +29,7 @@ const finding = computed(() => {
   return summarize(entry)
 })
 const diagnosis = computed(() => {
-  if (errors.value.length) return `${errors.value.length} error signal${errors.value.length === 1 ? '' : 's'} occurred in the same execution context. The first failure is the strongest starting point.`
+  if (errors.value.length) return `${errors.value.length} error record${errors.value.length === 1 ? '' : 's'} occurred in the same execution context. The first failure is the strongest starting point.`
   if (queries.value.length > 8) return `${queries.value.length} SQL operations belong to this execution. Repeated statements or N+1 access may be contributing cost.`
   if (entryDuration(slowest.value) >= 500) return `${signalFor(slowest.value.type).label} is the dominant recorded span at ${entryDuration(slowest.value)}ms.`
   return `No failure signature was detected across ${props.batch.length} linked operations. The trace is consistent with expected execution.`
