@@ -19,6 +19,8 @@ import {
 } from '../llmSettings'
 import { signals, type SignalDefinition } from '../utils'
 import type { Entry, EntryType } from '../types'
+import { askConfirm } from '../confirm'
+import { showToast } from '../toast'
 import {
   accentOptions,
   appearance,
@@ -32,7 +34,6 @@ import {
 
 const activeTab = ref<'recording' | 'appearance' | 'integrations' | 'llm'>('recording')
 const pending = ref<Record<string, boolean>>({})
-const notice = ref<{ tone: 'success' | 'error'; text: string } | null>(null)
 const analysisEntries = ref<Entry[]>([])
 const analysisLoading = ref(false)
 
@@ -92,17 +93,38 @@ async function toggle(signal: SignalDefinition) {
   const next = !(setting?.enabled !== false)
   if (!next) {
     const count = setting?.count || 0
-    if (!confirm(`Disable ${signal.label}? This immediately deletes ${count.toLocaleString()} retained records and stops future recording.`)) return
+    const accepted = await askConfirm({
+      title: `Disable ${signal.label}`,
+      message: `Stop recording and delete ${count.toLocaleString()} retained records?`,
+      detail: 'Disabling this recorder permanently removes its stored entries and stops future capture.',
+      confirmLabel: 'Disable recorder',
+      cancelLabel: 'Keep enabled',
+      tone: 'danger',
+    })
+    if (!accepted) return
   }
   pending.value[signal.type] = true
-  notice.value = null
   try {
     const result = await setSignalEnabled(signal.type as EntryType, next)
-    notice.value = next
-      ? { tone: 'success', text: `${signal.label} is live. New records will appear immediately.` }
-      : { tone: 'success', text: `${signal.label} disabled and ${result.deleted.toLocaleString()} records permanently removed.` }
+    if (next) {
+      showToast({
+        tone: 'success',
+        title: 'Recorder enabled',
+        text: `${signal.label} is live. New records will appear immediately.`,
+      })
+    } else {
+      showToast({
+        tone: 'success',
+        title: 'Recorder disabled',
+        text: `${signal.label} disabled and ${result.deleted.toLocaleString()} records permanently removed.`,
+      })
+    }
   } catch (error) {
-    notice.value = { tone: 'error', text: error instanceof Error ? error.message : 'Setting could not be saved' }
+    showToast({
+      tone: 'error',
+      title: 'Setting not saved',
+      text: error instanceof Error ? error.message : 'Setting could not be saved.',
+    })
   } finally {
     pending.value[signal.type] = false
   }
@@ -156,12 +178,6 @@ onMounted(() => {
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'integrations' }" @click="activeTab = 'integrations'"><i>03</i><span><strong>Integrations</strong><small>SDKs and frameworks</small></span></button>
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'llm' }" @click="activeTab = 'llm'"><i>04</i><span><strong>Intelligence</strong><small>Provider and data scope</small></span></button>
     </div>
-
-    <Transition name="notice">
-      <div v-if="notice" class="action-notice settings-notice" :class="`is-${notice.tone}`">
-        <span>{{ notice.text }}</span><button @click="notice = null">×</button>
-      </div>
-    </Transition>
 
     <template v-if="activeTab === 'recording'">
       <div v-if="signalSettings.loading && !signalSettings.loaded" class="settings-loading">
