@@ -1,5 +1,5 @@
 {
-  "name": "@qobly/microscope-client",
+  "name": "@opentoxic/microscope-client",
   "version": "0.1.0",
   "description": "Thin HTTP client for the microscope observability API",
   "type": "module",
