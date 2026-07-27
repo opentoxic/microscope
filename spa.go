@@ -9,13 +9,14 @@ import (
 func (h *Handler) registerSPARoutes(mux *http.ServeMux, prefix string) {
 	mux.HandleFunc("GET "+prefix+"/assets/", h.serveStatic(prefix))
 	mux.HandleFunc("GET "+prefix+"/entries/{id}", h.serveSPA)
+	mux.HandleFunc("GET "+prefix+"/settings", h.serveSPA)
 	mux.HandleFunc("GET "+prefix, h.serveSPA)
 	mux.HandleFunc("GET "+prefix+"/", h.serveSPA)
 }
 
 func (h *Handler) serveSPA(w http.ResponseWriter, r *http.Request) {
 	prefix := h.Hub.cfg.pathPrefix()
-	if r.URL.Path != prefix && r.URL.Path != prefix+"/" && !strings.HasPrefix(r.URL.Path, prefix+"/entries/") {
+	if r.URL.Path != prefix && r.URL.Path != prefix+"/" && r.URL.Path != prefix+"/settings" && !strings.HasPrefix(r.URL.Path, prefix+"/entries/") {
 		http.NotFound(w, r)
 		return
 	}
