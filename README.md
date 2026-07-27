@@ -1,9 +1,35 @@
+<div align="center">
+
+<img src="./banner.svg" alt="microscope" width="100%" />
+
+<br/>
+
+![go](https://img.shields.io/badge/go-in--process-20d9ee?style=for-the-badge&labelColor=0a1218)
+![vue](https://img.shields.io/badge/ui-vue%203-28e0a0?style=for-the-badge&labelColor=0a1218)
+![postgres](https://img.shields.io/badge/storage-postgresql-4c9fff?style=for-the-badge&labelColor=0a1218)
+![signals](https://img.shields.io/badge/signals-http·sql·redis·kafka-7eb4c0?style=for-the-badge&labelColor=0a1218)
+![stack](https://img.shields.io/badge/stacks-any_language-20d9ee?style=for-the-badge&labelColor=0a1218)
+
+</div>
+
+<br/>
+
 # microscope — development observability, any stack
 
 Records HTTP requests, SQL queries, structured logs, cache and Redis activity, queue jobs,
 schedules, events, notifications, mail, outgoing HTTP calls, WebSockets, performance spans,
 runtime metrics, custom events, and panics during development. Ships a Vue 3 workspace served
 by the Go core.
+
+## Overview
+
+<p align="center">
+  <img src="./docs/assets/overview.png" alt="Microscope runtime overview dashboard" width="96%" />
+</p>
+
+<p align="center"><em>Live activity workspace — signal stream, runtime vitals, and system topology (demo mode)</em></p>
+
+<br/>
 
 ## Layout
 
