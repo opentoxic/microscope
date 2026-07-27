@@ -78,6 +78,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="app-frame">
+    <div class="ambient-field" aria-hidden="true"><i /><i /><i /></div>
     <header class="instrument-bar">
       <div class="brand-lockup">
         <RouterLink to="/" class="brand-mark" aria-label="Qobly Signal home">
@@ -119,7 +120,7 @@ onBeforeUnmount(() => {
             :key="signal.type"
             class="signal-tab"
             :class="{ 'is-active': currentType === signal.type && route.name === 'list', 'is-dormant': !signal.available }"
-            :style="{ '--signal': signal.color }"
+            :style="{ '--signal': signal.color, '--nav-delay': `${index * 32}ms` }"
             @click="navigate(signal.type)"
           >
             <span class="signal-tab__wave"><SignalIcon :type="signal.type" size="sm" /></span>

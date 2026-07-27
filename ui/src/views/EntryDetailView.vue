@@ -11,7 +11,7 @@ import EntryInsight from '../components/EntryInsight.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
 import SqlInspector from '../components/SqlInspector.vue'
-import { entryDuration, entryMeta, formatClock, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
+import { entryDuration, entryMeta, entrySignalColor, formatClock, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
 import { llmSettings } from '../llmSettings'
 import { signalEnabled } from '../settings'
 
@@ -109,7 +109,7 @@ function openTimelineEntry(entry: Entry) {
     </div>
 
     <div v-else-if="data" class="trace-workspace">
-      <header class="trace-heading" :style="{ '--signal': signalFor(data.entry.type).color }">
+      <header class="trace-heading" :style="{ '--signal': entrySignalColor(data.entry) }">
         <div class="trace-heading__identity">
           <span class="trace-symbol"><SignalIcon :type="data.entry.type" size="lg" /></span>
           <div>
@@ -136,7 +136,7 @@ function openTimelineEntry(entry: Entry) {
           <button @click="router.replace(`/entries/${props.id}`)">Close split view</button>
         </header>
         <div class="comparison-columns">
-          <article v-for="(trace, index) in [data, comparison]" :key="trace.entry.id" :style="{ '--signal': signalFor(trace.entry.type).color }">
+          <article v-for="(trace, index) in [data, comparison]" :key="trace.entry.id" :style="{ '--signal': entrySignalColor(trace.entry) }">
             <span class="comparison-index">0{{ index + 1 }}</span>
             <Badge :label="trace.entry.type" :class-name="typeBadgeClass(trace.entry.type)" />
             <h2>{{ summarize(trace.entry) }}</h2>
@@ -171,7 +171,7 @@ function openTimelineEntry(entry: Entry) {
               v-for="entry in timeline"
               :key="entry.id"
               :class="{ active: entry.id === data.entry.id }"
-              :style="{ '--signal': signalFor(entry.type).color }"
+              :style="{ '--signal': entrySignalColor(entry) }"
               @click="openTimelineEntry(entry)"
             >
               <span class="timeline-node"><SignalIcon :type="entry.type" size="sm" /></span>
