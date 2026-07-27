@@ -7,10 +7,19 @@ import (
 
 // Enabled reports whether microscope should be active for the given app environment.
 func Enabled(appEnv string, cfg Config) bool {
-	if appEnv != "development" {
+	if !cfg.Enabled {
 		return false
 	}
-	return cfg.Enabled
+	allowed := cfg.AllowedEnvs
+	if len(allowed) == 0 {
+		allowed = DefaultAllowedEnvs()
+	}
+	for _, env := range allowed {
+		if env == appEnv {
+			return true
+		}
+	}
+	return false
 }
 
 // PruneResult is returned by manual prune API.
