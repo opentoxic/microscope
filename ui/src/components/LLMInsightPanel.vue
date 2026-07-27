@@ -51,7 +51,7 @@ const scoreOffset = computed(() => {
 async function runAnalysis() {
   if (!canRun.value || loading.value) return
   if (!filteredEntries.value.length) {
-    error.value = 'No signals match your selected data types and time window.'
+    error.value = 'No records match your selected data types and time window.'
     return
   }
   loading.value = true
@@ -62,7 +62,7 @@ async function runAnalysis() {
       model: llmSettings.model,
       api_key: llmSettings.apiKey,
       period: llmSettings.period,
-      context: props.context || props.title || 'Signal runtime analysis',
+      context: props.context || props.title || 'Microscope runtime analysis',
       entries: filteredEntries.value.map(entry => ({
         id: entry.id,
         type: entry.type,
@@ -86,7 +86,7 @@ async function runAnalysis() {
         <span>LLM intelligence</span>
         <strong>{{ title || 'Manual runtime analysis' }}</strong>
         <p v-if="canRun">
-          {{ filteredEntries.length }} signals · {{ llmSettings.period }} window · {{ llmSettings.provider }} / {{ llmSettings.model }}
+          {{ filteredEntries.length }} records · {{ llmSettings.period }} window · {{ llmSettings.provider }} / {{ llmSettings.model }}
         </p>
         <p v-else>Configure a provider, API key, and model to run analysis.</p>
       </div>
@@ -103,7 +103,7 @@ async function runAnalysis() {
 
     <div v-if="loading" class="llm-loading">
       <span class="action-spinner" />
-      <span>Correlating {{ filteredEntries.length }} signals with {{ llmSettings.provider }}…</span>
+      <span>Correlating {{ filteredEntries.length }} records with {{ llmSettings.provider }}…</span>
     </div>
 
     <div v-else-if="!result" class="llm-insight-empty">
@@ -111,7 +111,7 @@ async function runAnalysis() {
         Manual mode is active. Select your data types and period{{ setupMode ? ' above' : ' in settings' }}, then run analysis when you want deeper interpretation.
       </template>
       <template v-else>
-        Open <RouterLink to="/settings">Signal settings</RouterLink> and connect an LLM provider to enable insights.
+        Open <RouterLink to="/settings">Microscope settings</RouterLink> and connect an LLM provider to enable insights.
       </template>
     </div>
 
@@ -137,7 +137,7 @@ async function runAnalysis() {
             </article>
           </div>
 
-          <div v-if="chartBars.length" class="llm-chart-strip" aria-label="Signal distribution">
+          <div v-if="chartBars.length" class="llm-chart-strip" aria-label="Recorder distribution">
             <i
               v-for="bar in chartBars"
               :key="bar.type"
@@ -189,7 +189,7 @@ async function runAnalysis() {
               <SignalIcon :type="item.type as any" size="sm" :style="{ '--signal': signalFor(item.type).color }" />
               <div>
                 <strong>{{ signalFor(item.type).label }}</strong>
-                <small>{{ item.count }} signals · {{ Math.round(item.pct) }}%</small>
+                <small>{{ item.count }} records · {{ Math.round(item.pct) }}%</small>
               </div>
             </article>
           </div>
