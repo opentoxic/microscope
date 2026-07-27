@@ -27,6 +27,8 @@ type Hub struct {
 	controlSubs map[chan ControlEvent]struct{}
 	settingsMu  sync.RWMutex
 	enabled     map[EntryType]bool
+	recordingMu sync.RWMutex
+	recordingPaused bool
 }
 
 // New creates a Hub backed by PostgreSQL.
@@ -57,7 +59,7 @@ func (h *Hub) startRuntimeSampler() {
 			case <-h.stopCh:
 				return
 			case <-ticker.C:
-				if !h.TypeEnabled(TypeMetric) {
+				if h.RecordingPaused() || !h.TypeEnabled(TypeMetric) {
 					continue
 				}
 				entryID := newID()
@@ -120,7 +122,7 @@ func (h *Hub) Config() Config {
 
 // Record persists an entry asynchronously.
 func (h *Hub) Record(ctx context.Context, e Entry) {
-	if !h.TypeEnabled(e.Type) {
+	if h.RecordingPaused() || !h.TypeEnabled(e.Type) {
 		return
 	}
 	if e.ID == "" {
@@ -141,7 +143,7 @@ func (h *Hub) Record(ctx context.Context, e Entry) {
 		defer h.wg.Done()
 		h.settingsMu.RLock()
 		defer h.settingsMu.RUnlock()
-		if !h.enabled[e.Type] {
+		if h.RecordingPaused() || !h.enabled[e.Type] {
 			return
 		}
 		insertCtx, cancel := context.WithTimeout(WithoutTrace(context.Background()), 10*time.Second)
@@ -183,6 +185,25 @@ func (h *Hub) TypeEnabled(entryType EntryType) bool {
 	h.settingsMu.RLock()
 	defer h.settingsMu.RUnlock()
 	return h.enabled[entryType]
+}
+
+// RecordingPaused reports whether new entries are being accepted.
+func (h *Hub) RecordingPaused() bool {
+	h.recordingMu.RLock()
+	defer h.recordingMu.RUnlock()
+	return h.recordingPaused
+}
+
+// SetRecordingPaused toggles whether new entries are persisted.
+func (h *Hub) SetRecordingPaused(paused bool) {
+	h.recordingMu.Lock()
+	if h.recordingPaused == paused {
+		h.recordingMu.Unlock()
+		return
+	}
+	h.recordingPaused = paused
+	h.recordingMu.Unlock()
+	h.publishControl(ControlEvent{Action: "recording-paused", Paused: &paused})
 }
 
 // TypeSettings returns all configured signal settings and their stored counts.
@@ -238,6 +259,7 @@ type ControlEvent struct {
 	Action  string    `json:"action"`
 	Type    EntryType `json:"type,omitempty"`
 	Deleted int64     `json:"deleted"`
+	Paused  *bool     `json:"paused,omitempty"`
 }
 
 // SubscribeControls returns a live stream of prune and recording-policy mutations.
