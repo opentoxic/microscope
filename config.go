@@ -4,12 +4,13 @@ import "time"
 
 // Config holds microscope runtime options.
 type Config struct {
-	Enabled        bool
-	Path           string
-	RetentionHours int
-	MaxBodyBytes   int
-	AllowedEnvs    []string
-	AutoMigrate    bool
+	Enabled         bool
+	Path            string
+	RetentionHours  int
+	MaxBodyBytes    int
+	AllowedEnvs     []string
+	AutoMigrate     bool
+	RedactSensitive bool
 }
 
 // DefaultAllowedEnvs lists app environments where microscope may run.
