@@ -4,6 +4,7 @@ import { demoDetail, demoEntries, demoList, demoSettings, demoStorageUsage } fro
 const API = '/microscope/api'
 export const demoMode = import.meta.env.VITE_DEMO_MODE === 'true'
 let demoRecordingPaused = false
+let demoRedactionEnabled = false
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(API + path, init)
@@ -56,6 +57,23 @@ export function setRecordingPaused(paused: boolean) {
   })
 }
 
+export function getRedactionSetting() {
+  if (demoMode) return Promise.resolve({ enabled: demoRedactionEnabled })
+  return request<{ enabled: boolean }>('/redaction')
+}
+
+export function updateRedactionSetting(enabled: boolean) {
+  if (demoMode) {
+    demoRedactionEnabled = enabled
+    return Promise.resolve({ enabled: demoRedactionEnabled })
+  }
+  return request<{ enabled: boolean }>('/redaction', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ enabled }),
+  })
+}
+
 export function updateSignalSetting(type: EntryType, enabled: boolean) {
   if (demoMode) return Promise.resolve({ type, enabled, deleted: enabled ? 0 : demoEntries.filter(entry => entry.type === type).length })
   return request<{ type: EntryType; enabled: boolean; deleted: number }>(`/settings/${encodeURIComponent(type)}`, {
@@ -100,7 +118,7 @@ export function createCustomEntry(name: string, content: Record<string, unknown>
 export function subscribeEntries(
   onEntry: (entry: Entry) => void,
   onState?: (connected: boolean) => void,
-  onControl?: (event: { action: string; type?: EntryType; deleted: number; paused?: boolean }) => void,
+  onControl?: (event: { action: string; type?: EntryType; deleted: number; paused?: boolean; redact_sensitive?: boolean }) => void,
 ) {
   if (demoMode) {
     onState?.(true)
