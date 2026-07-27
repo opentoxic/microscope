@@ -27,7 +27,7 @@ adding another language means writing a small HTTP client, not re-implementing t
 
 ## Quick start (standalone server)
 
-1. Run migrations `migrations/001_microscope.up.sql` and `migrations/002_microscope_settings.up.sql`
+1. Run migrations `migrations/001_microscope.up.sql`, `002_microscope_settings.up.sql`, and `003_microscope_options.up.sql`
 2. Set `APP_ENV=development` and `MICROSCOPE_ENABLED=true`
 3. `make run` — builds the Vue UI and starts the server
 4. Open `/microscope`
@@ -146,10 +146,14 @@ See each SDK's README for full docs and framework integrations:
 | POST | `/microscope/api/prune` | Clear all entries |
 | GET | `/microscope/api/settings` | List recording policies and retained counts |
 | PUT | `/microscope/api/settings/{type}` | Enable or disable a recorder (`{"enabled":false}`) |
+| GET | `/microscope/api/redaction` | Read sensitive-data redaction policy |
+| PUT | `/microscope/api/redaction` | Enable or disable redaction (`{"enabled":true}`) |
 
 Disabling a recorder is destructive by design: the hub closes its ingestion gate, transactionally
 deletes every retained entry of that type, and broadcasts the mutation to connected dashboards.
 Re-enabling it resumes recording new entries; deleted history is not restored.
+
+By default, Microscope records full payloads for local debugging (passwords, tokens, OTPs, Redis args, Kafka messages, HTTP bodies). Enable redaction in Settings → Recording or with `MICROSCOPE_REDACT_SENSITIVE=true` to mask sensitive fields before storage.
 
 ## UI development
 
@@ -168,5 +172,6 @@ npm run dev   # Vite on :5173, proxies API to :8093
 | `MaxBodyBytes` | `65536` | Max request/response body captured |
 | `AllowedEnvs` | `development`, `local` | App environments where microscope runs |
 | `AutoMigrate` | `true` | Run embedded migrations on `Setup()` |
+| `RedactSensitive` | `false` | Mask passwords, tokens, OTPs, and broker payloads before storage |
 
 microscope is active when `APP_ENV` is in `AllowedEnvs` and `Enabled` is true.
