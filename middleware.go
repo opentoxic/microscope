@@ -83,9 +83,9 @@ func (h *Hub) Middleware() func(http.Handler) http.Handler {
 					"duration_ms":   duration.Milliseconds(),
 					"ip":            rc.IPAddress,
 					"user_agent":    rc.UserAgent,
-					"headers":       RedactHeaders(headers),
-					"request_body":  RedactJSON(reqBody),
-					"response_body": RedactJSON(capture.body.Bytes()),
+					"headers":       h.SanitizeHeaders(headers),
+					"request_body":  h.SanitizeJSON(reqBody),
+					"response_body": h.SanitizeJSON(capture.body.Bytes()),
 				},
 				CreatedAt: time.Now().UTC(),
 			})

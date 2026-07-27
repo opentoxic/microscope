@@ -60,7 +60,7 @@ func (t *QueryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.T
 
 	content := map[string]any{
 		"sql":         trace.sql,
-		"args":        redactArgs(trace.args),
+		"args":        t.hub.SanitizeArgs(trace.args),
 		"duration_ms": duration.Milliseconds(),
 	}
 	if data.Err != nil {
