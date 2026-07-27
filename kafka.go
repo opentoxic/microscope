@@ -30,11 +30,26 @@ func (w *KafkaWriter) WriteMessages(ctx context.Context, messages ...kafka.Messa
 	for _, message := range messages {
 		bytes += len(message.Key) + len(message.Value)
 	}
-	w.Hub.RecordTopic(ctx, topic, "produce", time.Since(started), map[string]any{
+	content := map[string]any{
 		"message_count": len(messages),
 		"size_bytes":    bytes,
 		"error":         errorString(err),
-	})
+	}
+	if w.Hub != nil && !w.Hub.RedactSensitive() {
+		maxBytes := w.Hub.cfg.MaxBodyBytes
+		if maxBytes <= 0 {
+			maxBytes = 65536
+		}
+		payloads := make([]map[string]string, 0, len(messages))
+		for _, message := range messages {
+			payloads = append(payloads, map[string]string{
+				"key":   TruncateBytes(message.Key, maxBytes),
+				"value": TruncateBytes(message.Value, maxBytes),
+			})
+		}
+		content["messages"] = payloads
+	}
+	w.Hub.RecordTopic(ctx, topic, "produce", time.Since(started), content)
 	return err
 }
 
@@ -62,12 +77,21 @@ func (r *KafkaReader) FetchMessage(ctx context.Context) (kafka.Message, error) {
 	if topic == "" {
 		topic = r.Reader.Config().Topic
 	}
-	r.Hub.RecordTopic(ctx, topic, "consume", time.Since(started), map[string]any{
+	content := map[string]any{
 		"partition":  message.Partition,
 		"offset":     message.Offset,
 		"size_bytes": len(message.Key) + len(message.Value),
 		"error":      errorString(err),
-	})
+	}
+	if r.Hub != nil && !r.Hub.RedactSensitive() {
+		maxBytes := r.Hub.cfg.MaxBodyBytes
+		if maxBytes <= 0 {
+			maxBytes = 65536
+		}
+		content["key"] = TruncateBytes(message.Key, maxBytes)
+		content["value"] = TruncateBytes(message.Value, maxBytes)
+	}
+	r.Hub.RecordTopic(ctx, topic, "consume", time.Since(started), content)
 	return message, err
 }
 
