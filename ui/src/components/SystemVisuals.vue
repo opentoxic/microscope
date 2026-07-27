@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Entry, EntryType } from '../types'
-import { detectMetricLanguage, entryDuration, isError, signalFor } from '../utils'
+import { detectMetricLanguage, entryDuration, entrySignalColor, isError, METRIC_LANGUAGE_COLORS, signalFor } from '../utils'
 
 const props = defineProps<{ entries: Entry[] }>()
 const router = useRouter()
@@ -31,7 +31,7 @@ const LANGUAGE_SHORT_CODES: Record<string, string> = {
   elixir: 'EX',
 }
 
-const serviceLanguageCode = computed(() => {
+const serviceLanguage = computed(() => {
   const counts = new Map<string, number>()
   for (const entry of props.entries) {
     if (entry.type !== 'metric') continue
@@ -40,8 +40,10 @@ const serviceLanguageCode = computed(() => {
     counts.set(language, (counts.get(language) || 0) + 1)
   }
   const top = [...counts].sort((a, b) => b[1] - a[1])[0]
-  return LANGUAGE_SHORT_CODES[top?.[0] || 'go'] || 'GO'
+  return top?.[0] || 'go'
 })
+const serviceLanguageCode = computed(() => LANGUAGE_SHORT_CODES[serviceLanguage.value] || 'GO')
+const serviceLanguageColor = computed(() => METRIC_LANGUAGE_COLORS[serviceLanguage.value as keyof typeof METRIC_LANGUAGE_COLORS] || METRIC_LANGUAGE_COLORS.unknown)
 
 const chronological = computed(() => [...props.entries].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)))
 const activityBuckets = computed(() => {
@@ -137,7 +139,7 @@ const busiest = computed(() => {
           <g v-for="node in dependencies" :key="node.type">
             <line :x1="300" :y1="112" :x2="node.x + 32" :y2="node.y + 20" :class="{ active: node.count }" :style="{ '--edge': node.color, '--weight': Math.min(5, 1 + node.count / 5) }" />
           </g>
-          <g class="service-core"><circle cx="300" cy="112" r="42"/><circle cx="300" cy="112" r="31"/><text x="300" y="109">{{ serviceLanguageCode }}</text><text x="300" y="126">SERVICE</text></g>
+          <g class="service-core" :style="{ '--runtime-color': serviceLanguageColor }"><circle cx="300" cy="112" r="42"/><circle cx="300" cy="112" r="31"/><text x="300" y="109">{{ serviceLanguageCode }}</text><text x="300" y="126">SERVICE</text></g>
           <g v-for="node in dependencies" :key="`node-${node.type}`" class="dependency-node" :class="{ active: node.count }" :transform="`translate(${node.x} ${node.y})`" :style="{ '--node': node.color }" tabindex="0" @mousemove="showTooltip($event, node.label, `${node.count} operations`, `${signalFor(node.type).label} in this window`)">
             <rect width="66" height="42"/><circle cx="12" cy="13" r="3"/><text x="33" y="21">{{ node.label }}</text><text x="33" y="34">{{ node.count }} ops</text>
           </g>
@@ -162,7 +164,7 @@ const busiest = computed(() => {
             v-for="entry in entries.slice(0, 56)"
             :key="entry.id"
             :class="{ error: isError(entry) }"
-            :style="{ '--cell': signalFor(entry.type).color, '--intensity': Math.min(1, .35 + entryDuration(entry) / 800) }"
+            :style="{ '--cell': entrySignalColor(entry), '--intensity': Math.min(1, .35 + entryDuration(entry) / 800) }"
             :aria-label="`Open ${signalFor(entry.type).label} entry`"
             @mousemove="showTooltip($event, signalFor(entry.type).label, entryDuration(entry) ? `${entryDuration(entry)}ms` : 'Untimed', String(entry.content?.path || entry.content?.name || entry.id.slice(0, 12)))"
             @click="router.push(`/entries/${entry.id}`)"

@@ -149,14 +149,34 @@ export type MetricLanguage = (typeof KNOWN_METRIC_LANGUAGES)[number] | 'unknown'
 const METRIC_LANGUAGE_LABELS: Record<string, string> = {
   go: 'Go',
   python: 'Python',
-  node: 'Node.js',
+  node: 'TypeScript / Node.js',
   ruby: 'Ruby',
   php: 'PHP',
   elixir: 'Elixir',
 }
 
+export const METRIC_LANGUAGE_COLORS: Record<MetricLanguage, string> = {
+  go: '#00add8',
+  python: '#ffd343',
+  node: '#4f8cff',
+  ruby: '#ff5a58',
+  php: '#9b9de2',
+  elixir: '#b56cff',
+  unknown: '#62d8c6',
+}
+
 function isKnownMetricLanguage(value: string): value is (typeof KNOWN_METRIC_LANGUAGES)[number] {
   return (KNOWN_METRIC_LANGUAGES as readonly string[]).includes(value)
+}
+
+function normalizeMetricLanguage(value: string): string {
+  const normalized = value.trim().toLowerCase()
+  if (['typescript', 'javascript', 'nodejs', 'node.js', 'ts', 'js'].includes(normalized)) return 'node'
+  if (normalized === 'golang') return 'go'
+  if (normalized === 'py') return 'python'
+  if (normalized === 'rb') return 'ruby'
+  if (normalized === 'ex' || normalized === 'beam') return 'elixir'
+  return normalized
 }
 
 /**
@@ -166,11 +186,11 @@ function isKnownMetricLanguage(value: string): value is (typeof KNOWN_METRIC_LAN
  */
 export function detectMetricLanguage(entry: Entry): MetricLanguage {
   const content = entry.content || {}
-  const explicit = String(content.language || '').toLowerCase()
+  const explicit = normalizeMetricLanguage(String(content.language || ''))
   if (isKnownMetricLanguage(explicit)) return explicit
 
   const name = String(content.name || '')
-  const prefix = name.split('.')[0]?.toLowerCase() || ''
+  const prefix = normalizeMetricLanguage(name.split('.')[0] || '')
   if (isKnownMetricLanguage(prefix)) return prefix
 
   return 'unknown'
@@ -178,6 +198,14 @@ export function detectMetricLanguage(entry: Entry): MetricLanguage {
 
 export function metricLanguageLabel(entry: Entry): string {
   return METRIC_LANGUAGE_LABELS[detectMetricLanguage(entry)] || 'Unknown runtime'
+}
+
+export function metricLanguageColor(entry: Entry): string {
+  return METRIC_LANGUAGE_COLORS[detectMetricLanguage(entry)]
+}
+
+export function entrySignalColor(entry: Entry): string {
+  return entry.type === 'metric' ? metricLanguageColor(entry) : signalFor(entry.type).color
 }
 
 /** A human label for a metric entry's concurrency unit, e.g. "Goroutines", "Threads". */

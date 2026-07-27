@@ -19,7 +19,16 @@ import {
 } from '../llmSettings'
 import { signals, type SignalDefinition } from '../utils'
 import type { Entry, EntryType } from '../types'
-import { accentOptions, appearance, resetAppearance, type Density } from '../appearance'
+import {
+  accentOptions,
+  appearance,
+  applyPreset,
+  presetOptions,
+  resetAppearance,
+  type CornerStyle,
+  type Density,
+  type MotionLevel,
+} from '../appearance'
 
 const activeTab = ref<'recording' | 'appearance' | 'integrations' | 'llm'>('recording')
 const pending = ref<Record<string, boolean>>({})
@@ -39,16 +48,38 @@ const densities: Array<{ id: Density; label: string; detail: string }> = [
   { id: 'comfortable', label: 'Comfortable', detail: 'Balanced for daily use' },
   { id: 'spacious', label: 'Spacious', detail: 'More breathing room' },
 ]
+const motionLevels: Array<{ id: MotionLevel; label: string; detail: string }> = [
+  { id: 'calm', label: 'Calm', detail: 'Short, restrained transitions' },
+  { id: 'fluid', label: 'Fluid', detail: 'Smooth spring-like movement' },
+  { id: 'cinematic', label: 'Cinematic', detail: 'Longer layered transitions' },
+]
+const cornerStyles: Array<{ id: CornerStyle; label: string }> = [
+  { id: 'cut', label: 'Cut corners' },
+  { id: 'rounded', label: 'Soft glass' },
+  { id: 'square', label: 'Hard terminal' },
+]
+const appearanceToggles = [
+  { key: 'motion', label: 'Interface motion', detail: 'Page transitions and animated state changes' },
+  { key: 'dataPulse', label: 'Live data pulse', detail: 'Animate new signals and changing measurements' },
+  { key: 'ambientLight', label: 'Ambient light', detail: 'Slow moving color fields behind the workspace' },
+  { key: 'glass', label: 'Glass surfaces', detail: 'Blurred translucent cards and navigation' },
+  { key: 'glow', label: 'Neon glow', detail: 'Luminous edges and signal halos' },
+  { key: 'scanlines', label: 'Scanline texture', detail: 'Subtle terminal display finish' },
+  { key: 'grid', label: 'Coordinate grid', detail: 'Technical grid behind workspaces' },
+  { key: 'noise', label: 'Film grain', detail: 'Fine texture to reduce flat digital surfaces' },
+  { key: 'highContrast', label: 'High contrast', detail: 'Brighter text and stronger boundaries' },
+  { key: 'monospaceData', label: 'Technical typography', detail: 'Monospace IDs, metrics, and values' },
+] as const
 const ecosystems = [
-  { language: 'Go', code: 'GO', frameworks: ['net/http', 'Gin', 'Echo', 'Fiber'], status: 'Core + HTTP API' },
-  { language: 'Python', code: 'PY', frameworks: ['Django', 'FastAPI', 'Flask', 'Starlette'], status: 'SDK included' },
-  { language: 'TypeScript', code: 'TS', frameworks: ['Express', 'NestJS', 'Fastify', 'Next.js'], status: 'SDK included' },
-  { language: 'PHP', code: 'PHP', frameworks: ['Laravel', 'Symfony', 'Slim'], status: 'SDK + Laravel' },
-  { language: 'Ruby', code: 'RB', frameworks: ['Rails', 'Sinatra', 'Hanami'], status: 'SDK included' },
-  { language: 'Elixir', code: 'EX', frameworks: ['Phoenix', 'Plug', 'Oban'], status: 'SDK included' },
+  { language: 'Go', code: 'GO', color: '#00add8', frameworks: ['net/http', 'Gin', 'Echo', 'Fiber'], status: 'Core + HTTP API' },
+  { language: 'Python', code: 'PY', color: '#ffd343', frameworks: ['Django', 'FastAPI', 'Flask', 'Starlette'], status: 'SDK included' },
+  { language: 'TypeScript', code: 'TS', color: '#4f8cff', frameworks: ['Express', 'NestJS', 'Fastify', 'Next.js'], status: 'SDK included' },
+  { language: 'PHP', code: 'PHP', color: '#9b9de2', frameworks: ['Laravel', 'Symfony', 'Slim'], status: 'SDK + Laravel' },
+  { language: 'Ruby', code: 'RB', color: '#ff5a58', frameworks: ['Rails', 'Sinatra', 'Hanami'], status: 'SDK included' },
+  { language: 'Elixir', code: 'EX', color: '#b56cff', frameworks: ['Phoenix', 'Plug', 'Oban'], status: 'SDK included' },
 ]
 
-function toggleAppearance(key: 'glow' | 'scanlines' | 'grid' | 'motion' | 'highContrast' | 'monospaceData') {
+function toggleAppearance(key: typeof appearanceToggles[number]['key']) {
   appearance[key] = !appearance[key]
 }
 
@@ -111,8 +142,8 @@ onMounted(() => {
     <section class="settings-intro">
       <div>
         <span>Recorder control plane</span>
-        <h2>Configure what Signal records and how it interprets it.</h2>
-        <p>Manage signal retention policies and connect an LLM provider for manual, on-demand runtime intelligence.</p>
+        <h2>Tune every layer of your observability deck.</h2>
+        <p>Control ingestion, visual behavior, SDK connectivity, privacy, and manual runtime intelligence from one place.</p>
       </div>
       <div class="settings-enforcement">
         <i /><span><strong>Backend enforced</strong><small>UI visibility and database ingestion share one policy</small></span>
@@ -120,10 +151,10 @@ onMounted(() => {
     </section>
 
     <div class="settings-tabs">
-      <button class="settings-tab" :class="{ 'is-active': activeTab === 'recording' }" @click="activeTab = 'recording'">Signal recording</button>
-      <button class="settings-tab" :class="{ 'is-active': activeTab === 'appearance' }" @click="activeTab = 'appearance'">Appearance</button>
-      <button class="settings-tab" :class="{ 'is-active': activeTab === 'integrations' }" @click="activeTab = 'integrations'">SDKs & frameworks</button>
-      <button class="settings-tab" :class="{ 'is-active': activeTab === 'llm' }" @click="activeTab = 'llm'">LLM provider</button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'recording' }" @click="activeTab = 'recording'"><i>01</i><span><strong>Recording</strong><small>Signals and retention</small></span></button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'appearance' }" @click="activeTab = 'appearance'"><i>02</i><span><strong>Interface</strong><small>Theme, motion, density</small></span></button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'integrations' }" @click="activeTab = 'integrations'"><i>03</i><span><strong>Integrations</strong><small>SDKs and frameworks</small></span></button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'llm' }" @click="activeTab = 'llm'"><i>04</i><span><strong>Intelligence</strong><small>Provider and data scope</small></span></button>
     </div>
 
     <Transition name="notice">
@@ -166,9 +197,26 @@ onMounted(() => {
 
     <section v-else-if="activeTab === 'appearance'" class="appearance-settings">
       <header class="settings-section-heading">
-        <div><span>Visual system</span><strong>Make the console yours.</strong><p>All appearance preferences apply instantly and stay in this browser.</p></div>
+        <div><span>Visual system</span><strong>Calibrate your operator environment.</strong><p>Every control previews instantly and stays local to this browser.</p></div>
         <button class="settings-reset" @click="resetAppearance">Reset defaults</button>
       </header>
+
+      <section class="preset-deck">
+        <header><span>System preset</span><small>Terminal is the default operating profile</small></header>
+        <div>
+          <button
+            v-for="preset in presetOptions"
+            :key="preset.id"
+            :class="{ active: appearance.preset === preset.id }"
+            :style="{ '--preset-color': preset.color }"
+            @click="applyPreset(preset.id)"
+          >
+            <i>{{ preset.code }}</i>
+            <span><strong>{{ preset.label }}</strong><small>{{ preset.description }}</small></span>
+            <b />
+          </button>
+        </div>
+      </section>
 
       <div class="appearance-preview" :style="{ '--preview-accent': accentOptions.find(item => item.id === appearance.accent)?.color }">
         <div class="preview-chrome"><i /><i /><i /><span>MICROSCOPE / LIVE RUNTIME</span></div>
@@ -201,21 +249,38 @@ onMounted(() => {
           </div>
         </section>
 
+        <section class="preference-panel preference-panel--wide">
+          <header><strong>Motion character</strong><small>Choose how the workspace enters, responds, and settles.</small></header>
+          <div class="density-picker motion-picker">
+            <button v-for="level in motionLevels" :key="level.id" :class="{ active: appearance.motionLevel === level.id }" @click="appearance.motionLevel = level.id">
+              <span>{{ level.label }}</span><small>{{ level.detail }}</small>
+            </button>
+          </div>
+        </section>
+
+        <section class="preference-panel preference-panel--wide surface-controls">
+          <header><strong>Surface calibration</strong><small>Fine-tune type scale, glass depth, and panel geometry.</small></header>
+          <div class="range-control">
+            <label><span>Type scale</span><strong>{{ appearance.fontScale }}%</strong></label>
+            <input v-model.number="appearance.fontScale" type="range" min="90" max="112" step="1" />
+          </div>
+          <div class="range-control">
+            <label><span>Glass opacity</span><strong>{{ appearance.glassOpacity }}%</strong></label>
+            <input v-model.number="appearance.glassOpacity" type="range" min="42" max="94" step="2" />
+          </div>
+          <div class="corner-picker">
+            <button v-for="corner in cornerStyles" :key="corner.id" :class="{ active: appearance.cornerStyle === corner.id }" @click="appearance.cornerStyle = corner.id">{{ corner.label }}</button>
+          </div>
+        </section>
+
         <button
-          v-for="option in [
-            { key: 'motion', label: 'Interface motion', detail: 'Page transitions and animated state changes' },
-            { key: 'glow', label: 'Neon glow', detail: 'Luminous edges and signal halos' },
-            { key: 'scanlines', label: 'Scanline texture', detail: 'Subtle cyberdeck display finish' },
-            { key: 'grid', label: 'Ambient grid', detail: 'Faint coordinate grid behind workspaces' },
-            { key: 'highContrast', label: 'High contrast', detail: 'Brighter text and stronger boundaries' },
-            { key: 'monospaceData', label: 'Technical typography', detail: 'Monospace IDs, metrics, and values' },
-          ]"
+          v-for="option in appearanceToggles"
           :key="option.key"
           class="preference-toggle"
-          @click="toggleAppearance(option.key as 'glow' | 'scanlines' | 'grid' | 'motion' | 'highContrast' | 'monospaceData')"
+          @click="toggleAppearance(option.key)"
         >
           <span><strong>{{ option.label }}</strong><small>{{ option.detail }}</small></span>
-          <i class="setting-switch" :class="{ on: appearance[option.key as keyof typeof appearance] }"><b /></i>
+          <i class="setting-switch" :class="{ on: appearance[option.key] }"><b /></i>
         </button>
       </div>
     </section>
@@ -226,7 +291,7 @@ onMounted(() => {
         <span class="integration-ready"><i /> HTTP ingestion ready</span>
       </header>
       <div class="ecosystem-grid">
-        <article v-for="ecosystem in ecosystems" :key="ecosystem.language" class="ecosystem-card">
+        <article v-for="ecosystem in ecosystems" :key="ecosystem.language" class="ecosystem-card" :style="{ '--runtime': ecosystem.color }">
           <header><i>{{ ecosystem.code }}</i><div><strong>{{ ecosystem.language }}</strong><small>{{ ecosystem.status }}</small></div><span>READY</span></header>
           <div>
             <span v-for="framework in ecosystem.frameworks" :key="framework">{{ framework }}</span>

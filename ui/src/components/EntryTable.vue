@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import type { Entry } from '../types'
 import Badge from './Badge.vue'
 import SignalIcon from './SignalIcon.vue'
-import { entryDuration, entryMeta, formatClock, isError, methodClass, signalFor, statusClass, summarize, timeAgo } from '../utils'
+import { entryDuration, entryMeta, entrySignalColor, formatClock, isError, methodClass, signalFor, statusClass, summarize, timeAgo } from '../utils'
 
 const props = defineProps<{ entries: Entry[]; currentType: string }>()
 const router = useRouter()
@@ -59,7 +59,7 @@ function onKey(event: KeyboardEvent) {
       :class="{ 'is-error': isError(entry), 'is-selected': selected.includes(entry.id) }"
       role="listitem"
       tabindex="0"
-      :style="{ '--signal': signalFor(entry.type).color, '--duration': `${Math.max(3, entryDuration(entry) / maxDuration * 100)}%` }"
+      :style="{ '--signal': entrySignalColor(entry), '--duration': `${Math.max(3, entryDuration(entry) / maxDuration * 100)}%`, '--row-delay': `${Math.min(index, 14) * 34}ms` }"
       @focus="focused = index"
       @dblclick="openEntry(entry.id)"
       @keydown.enter="openEntry(entry.id)"
