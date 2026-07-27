@@ -10,14 +10,14 @@ func RecordPublish(hub *Hub, ctx context.Context, eventType string, payload map[
 	hub.RecordEvent(ctx, eventType, payload)
 }
 
-// RecordOTP records an OTP notification without storing the code.
-func RecordOTP(hub *Hub, ctx context.Context, kind, email string) {
+// RecordOTP records an OTP notification.
+func RecordOTP(hub *Hub, ctx context.Context, kind, email, otp string) {
 	if hub == nil {
 		return
 	}
 	hub.RecordNotification(ctx, kind, map[string]any{
 		"email": email,
-		"otp":   "[REDACTED]",
+		"otp":   hub.SanitizeOTP(otp),
 	})
 }
 
@@ -40,7 +40,7 @@ func (i *Integration) WrapOTPFunc(kind string, inner func(ctx context.Context, e
 	}
 	hub := i.hub
 	return func(ctx context.Context, email, otp string) error {
-		RecordOTP(hub, ctx, kind, email)
+		RecordOTP(hub, ctx, kind, email, otp)
 		return inner(ctx, email, otp)
 	}
 }
