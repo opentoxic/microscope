@@ -52,15 +52,40 @@ defmodule MicroscopeClient do
 
   @spec stop_runtime_metrics(pid()) :: :ok
   def stop_runtime_metrics(pid) do
-    Process.exit(pid, :normal)
+    monitor = Process.monitor(pid)
+    send(pid, :stop)
+
+    receive do
+      {:DOWN, ^monitor, :process, ^pid, _reason} -> :ok
+    after
+      1_000 ->
+        Process.exit(pid, :shutdown)
+
+        receive do
+          {:DOWN, ^monitor, :process, ^pid, _reason} -> :ok
+        after
+          1_000 -> Process.demonitor(monitor, [:flush])
+        end
+    end
+
     :ok
   end
 
   defp runtime_metrics_loop(client, interval) do
-    metrics = MicroscopeClient.RuntimeMetrics.sample()
-    record(client, metrics.name, metrics)
-    Process.sleep(interval)
-    runtime_metrics_loop(client, interval)
+    receive do
+      :stop ->
+        :ok
+    after
+      0 ->
+        metrics = MicroscopeClient.RuntimeMetrics.sample()
+        record(client, metrics.name, metrics)
+
+        receive do
+          :stop -> :ok
+        after
+          interval -> runtime_metrics_loop(client, interval)
+        end
+    end
   end
 
   defp post(client, path, body) do
