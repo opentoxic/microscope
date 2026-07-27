@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope;
+namespace Opentoxic\Microscope;
 
 class MicroscopeClient
 {

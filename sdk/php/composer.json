@@ -1,5 +1,5 @@
 {
-    "name": "qobly/microscope-client",
+    "name": "opentoxic/microscope-client",
     "description": "Thin HTTP client for the microscope observability API",
     "homepage": "https://github.com/opentoxic/microscope",
     "support": {
@@ -21,12 +21,12 @@
     },
     "autoload": {
         "psr-4": {
-            "Qobly\\Microscope\\": "src/"
+            "Opentoxic\\Microscope\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "Qobly\\Microscope\\Tests\\": "tests/"
+            "Opentoxic\\Microscope\\Tests\\": "tests/"
         }
     },
     "scripts": {
@@ -35,7 +35,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Qobly\\Microscope\\Laravel\\MicroscopeServiceProvider"
+                "Opentoxic\\Microscope\\Laravel\\MicroscopeServiceProvider"
             ]
         }
     }

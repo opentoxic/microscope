@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope;
+namespace Opentoxic\Microscope;
 
 /**
  * Best-effort PHP runtime metrics, shaped like every other microscope SDK: a

@@ -1,4 +1,4 @@
-# qobly/microscope-client (PHP)
+# opentoxic/microscope-client (PHP)
 
 Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 Only depends on ext-curl and ext-json — no third-party HTTP library required.
@@ -6,13 +6,13 @@ Only depends on ext-curl and ext-json — no third-party HTTP library required.
 ## Install
 
 ```bash
-composer require qobly/microscope-client
+composer require opentoxic/microscope-client
 ```
 
 ## Usage
 
 ```php
-use Qobly\Microscope\MicroscopeClient;
+use Opentoxic\Microscope\MicroscopeClient;
 
 $client = new MicroscopeClient('http://localhost:8093/microscope');
 

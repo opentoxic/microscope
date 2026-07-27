@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Qobly\Microscope\Tests;
+namespace Opentoxic\Microscope\Tests;
 
 use PHPUnit\Framework\TestCase;
-use Qobly\Microscope\MicroscopeClient;
+use Opentoxic\Microscope\MicroscopeClient;
 
 /** Overrides the curl transport so tests never hit the network. */
 final class FakeMicroscopeClient extends MicroscopeClient
