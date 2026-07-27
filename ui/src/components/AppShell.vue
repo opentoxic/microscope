@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import CommandPalette from './CommandPalette.vue'
+import ConfirmDialog from './ConfirmDialog.vue'
 import SignalIcon from './SignalIcon.vue'
+import ToastStack from './ToastStack.vue'
 import { signalFor, signals, typeTitles } from '../utils'
 import { enabledSignals, loadSignalSettings, signalEnabled } from '../settings'
 import { demoMode } from '../api/client'
@@ -21,6 +23,43 @@ const title = computed(() => {
   if (route.query.bookmarked === '1') return 'Bookmarks'
   return typeTitles[currentType.value] || 'All activity'
 })
+
+const sessionMode = computed(() => {
+  if (demoMode) return 'demo'
+  if (route.name === 'detail') return 'inspect'
+  if (route.name === 'settings') return 'settings'
+  if (route.query.bookmarked === '1') return 'bookmarks'
+  return 'live'
+})
+
+const sessionEyebrow = computed(() => {
+  if (demoMode) return 'Interactive demo'
+  if (route.name === 'detail') return 'Single trace'
+  if (route.name === 'settings') return 'Recording policy'
+  if (route.query.bookmarked === '1') return 'Saved records'
+  if (currentType.value) return `${currentSignal.value.shortLabel} stream`
+  return 'Live session'
+})
+
+const sessionSignal = computed(() => {
+  if (demoMode || route.name === 'settings') return 'var(--cyan)'
+  if (route.query.bookmarked === '1') return 'var(--amber)'
+  if (route.name === 'detail') return 'var(--purple)'
+  return currentSignal.value.color
+})
+
+const sessionIconType = computed(() => {
+  if (route.name === 'settings' || route.name === 'detail' || route.query.bookmarked === '1') return ''
+  return currentType.value as typeof currentSignal.value.type
+})
+
+const sessionHomeLink = computed(() => {
+  if (route.name !== 'list') return ''
+  if (currentType.value || route.query.bookmarked === '1') return '/'
+  return ''
+})
+
+const showSessionGlyph = computed(() => route.name === 'list' && Boolean(currentType.value))
 
 function navigate(type: string) {
   router.push(type ? { path: '/', query: { type } } : '/')
@@ -90,14 +129,30 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div class="session-identity">
-        <span class="session-pulse" />
-        <div>
-          <small>{{ demoMode ? 'Interactive demo' : 'Live session' }}</small>
-          <strong>{{ title }}</strong>
-        </div>
-        <span v-if="demoMode" class="demo-chip">DEMO</span>
-      </div>
+      <component
+        :is="sessionHomeLink ? RouterLink : 'div'"
+        :to="sessionHomeLink || undefined"
+        class="session-identity"
+        :class="[
+          `session-identity--${sessionMode}`,
+          { 'session-identity--linked': Boolean(sessionHomeLink) },
+        ]"
+        :style="{ '--session-signal': sessionSignal }"
+        :aria-label="sessionHomeLink ? 'Return to all activity' : undefined"
+      >
+        <span class="session-identity__sheen" aria-hidden="true" />
+        <span class="session-identity__beacon" aria-hidden="true">
+          <i /><i class="is-core" /><i />
+        </span>
+        <span v-if="showSessionGlyph" class="session-identity__glyph" aria-hidden="true">
+          <SignalIcon :type="sessionIconType" size="sm" />
+        </span>
+        <span class="session-identity__copy">
+          <span class="session-identity__eyebrow"><i />{{ sessionEyebrow }}</span>
+          <strong class="session-identity__title">{{ title }}</strong>
+        </span>
+        <span v-if="demoMode" class="demo-chip session-identity__chip">Demo</span>
+      </component>
 
       <div class="instrument-actions">
         <button class="command-trigger" @click="paletteOpen = true">
@@ -166,6 +221,8 @@ onBeforeUnmount(() => {
     </div>
 
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
+    <ConfirmDialog />
+    <ToastStack />
     <Transition name="shortcut">
       <div v-if="chordOpen" class="shortcut-hud"><kbd>G</kbd><span>then choose a recorder key</span></div>
     </Transition>
