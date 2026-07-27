@@ -19,7 +19,7 @@ const commands = computed(() => {
   const items = enabledSignals.value.map(signal => ({
     id: `signal-${signal.type || 'all'}`,
     label: signal.label,
-    detail: signal.available ? 'Open signal' : 'Awaiting recorder',
+    detail: signal.available ? 'Open recorder' : 'Awaiting recorder',
     key: `G ${signal.key}`,
     color: signal.color,
     disabled: false,
@@ -28,7 +28,7 @@ const commands = computed(() => {
   const actions = [
     { id: 'search', label: 'Search recorded activity', detail: 'Find paths, IDs, and messages', key: '/', color: '#a9b0b2', disabled: !needle, run: () => router.push({ path: '/', query: { search: query.value } }) },
     { id: 'bookmarks', label: 'Open bookmarked traces', detail: 'Return to pinned investigations', key: 'G B', color: '#e9ad58', disabled: false, run: () => router.push({ path: '/', query: { bookmarked: '1' } }) },
-    { id: 'settings', label: 'Configure signal recording', detail: 'Enable, purge, or restore recorders', key: 'G ,', color: '#20d9ee', disabled: false, run: () => router.push('/settings') },
+    { id: 'settings', label: 'Configure Microscope recording', detail: 'Enable, purge, or restore recorders', key: 'G ,', color: '#20d9ee', disabled: false, run: () => router.push('/settings') },
     { id: 'marker', label: 'Add timeline marker', detail: 'Record a custom event at this moment', key: '+', color: '#55cfe1', disabled: false, run: addMarker },
     { id: 'portal', label: 'Return to activity overview', detail: 'Open the live observability workspace', key: '↗', color: '#a9b0b2', disabled: false, run: () => router.push('/') },
   ].filter(action => action.id !== 'marker' || signalEnabled('custom'))
@@ -108,7 +108,7 @@ loadSignalSettings()
             <input
               ref="input"
               v-model="query"
-              placeholder="Go to a signal or search activity…"
+              placeholder="Go to a recorder or search activity…"
               @keydown.down.prevent="move(1)"
               @keydown.up.prevent="move(-1)"
               @keydown.enter.prevent="choose()"
@@ -117,7 +117,7 @@ loadSignalSettings()
             <kbd>esc</kbd>
           </div>
           <div class="command-list">
-            <div class="command-heading">{{ query ? 'Best matches' : 'Signals & actions' }}</div>
+            <div class="command-heading">{{ query ? 'Best matches' : 'Recorders & actions' }}</div>
             <button
               v-for="(command, index) in commands"
               :key="command.id"
@@ -141,7 +141,7 @@ loadSignalSettings()
           <div class="command-footer">
             <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
             <span><kbd>↵</kbd> open</span>
-            <span class="command-brand">Qobly Signal</span>
+            <span class="command-brand">Opentoxic Microscope</span>
           </div>
         </div>
       </div>
