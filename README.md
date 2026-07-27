@@ -32,6 +32,21 @@ adding another language means writing a small HTTP client, not re-implementing t
 3. `make run` — builds the Vue UI and starts the server
 4. Open `/microscope`
 
+## Zero-setup interactive UI demo
+
+To explore the complete dashboard without PostgreSQL or a running collector:
+
+```bash
+cd ui
+npm install
+npm run demo
+```
+
+Open `http://127.0.0.1:5173/microscope/`. Demo mode includes a live polyglot
+signal stream, linked traces, SQL and JSON inspection, interactive topology
+diagrams, bookmarks, filters, and all appearance settings. It never sends demo
+data to a backend.
+
 ## Using the Go module directly (in-process)
 
 ```bash
