@@ -4,7 +4,7 @@ import AppShell from '../components/AppShell.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
 import { listEntries } from '../api/client'
-import { loadSignalSettings, setSignalEnabled, signalSettings } from '../settings'
+import { loadRedactionSettings, loadSignalSettings, redactionSettings, setRedactionEnabled, setSignalEnabled, signalSettings } from '../settings'
 import {
   activeProvider,
   llmConfigured,
@@ -34,6 +34,7 @@ import {
 
 const activeTab = ref<'recording' | 'appearance' | 'integrations' | 'llm'>('recording')
 const pending = ref<Record<string, boolean>>({})
+const redactionPending = ref(false)
 const analysisEntries = ref<Entry[]>([])
 const analysisLoading = ref(false)
 
@@ -130,6 +131,40 @@ async function toggle(signal: SignalDefinition) {
   }
 }
 
+async function toggleRedaction() {
+  const next = !redactionSettings.enabled
+  if (next) {
+    const accepted = await askConfirm({
+      title: 'Enable sensitive data redaction',
+      message: 'Mask passwords, tokens, OTPs, and broker payloads before they are stored?',
+      detail: 'When disabled, Microscope records full request and message payloads in your local database for debugging.',
+      confirmLabel: 'Enable redaction',
+      cancelLabel: 'Keep full capture',
+      tone: 'danger',
+    })
+    if (!accepted) return
+  }
+  redactionPending.value = true
+  try {
+    await setRedactionEnabled(next)
+    showToast({
+      tone: 'success',
+      title: next ? 'Redaction enabled' : 'Full capture enabled',
+      text: next
+        ? 'Sensitive fields will be masked before storage.'
+        : 'Passwords, tokens, OTPs, and broker payloads will be stored as captured.',
+    })
+  } catch (error) {
+    showToast({
+      tone: 'error',
+      title: 'Redaction setting not saved',
+      text: error instanceof Error ? error.message : 'Setting could not be saved.',
+    })
+  } finally {
+    redactionPending.value = false
+  }
+}
+
 watch(() => llmSettings.apiKey, () => scheduleProviderModels())
 watch(() => activeTab.value, (tab) => {
   if (tab === 'llm') {
@@ -152,6 +187,7 @@ async function loadAnalysisEntries() {
 
 onMounted(() => {
   loadSignalSettings(true)
+  loadRedactionSettings(true)
   if (llmSettings.apiKey.trim()) scheduleProviderModels()
   if (activeTab.value === 'llm') loadAnalysisEntries()
 })
@@ -184,6 +220,25 @@ onMounted(() => {
         <div v-for="index in 9" :key="index"><i /><span /><b /></div>
       </div>
       <div v-else class="settings-groups">
+        <section class="settings-group">
+          <header><span>Data capture</span><p>Control whether sensitive values are masked before they reach the database.</p></header>
+          <div class="settings-signals">
+            <button
+              class="setting-row"
+              :class="{ 'is-disabled': redactionSettings.enabled, 'is-pending': redactionPending }"
+              :disabled="redactionPending"
+              @click="toggleRedaction"
+            >
+              <SignalIcon type="notification" size="md" />
+              <span class="setting-copy">
+                <strong>Redact sensitive data</strong>
+                <small>Mask passwords, tokens, OTPs, and broker payloads before storage. Off by default for full dev visibility.</small>
+              </span>
+              <span v-if="redactionPending" class="action-spinner" />
+              <span v-else class="setting-switch" :class="{ on: redactionSettings.enabled }"><i /></span>
+            </button>
+          </div>
+        </section>
         <section v-for="group in groups" :key="group.id" class="settings-group">
           <header><span>{{ group.title }}</span><p>{{ group.description }}</p></header>
           <div class="settings-signals">
