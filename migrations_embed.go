@@ -21,5 +21,6 @@ func MigrationFiles() []string {
 	return []string{
 		"001_microscope.up.sql",
 		"002_microscope_settings.up.sql",
+		"003_microscope_options.up.sql",
 	}
 }
