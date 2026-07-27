@@ -81,7 +81,7 @@ onBeforeUnmount(() => {
     <div class="ambient-field" aria-hidden="true"><i /><i /><i /></div>
     <header class="instrument-bar">
       <div class="brand-lockup">
-        <RouterLink to="/" class="brand-mark" aria-label="Qobly Signal home">
+        <RouterLink to="/" class="brand-mark" aria-label="Opentoxic Microscope home">
           <span /><span /><span />
         </RouterLink>
         <div class="brand-name">
@@ -106,14 +106,20 @@ onBeforeUnmount(() => {
           <kbd>⌘ K</kbd>
         </button>
         <slot name="actions" />
-        <RouterLink to="/" class="portal-exit" aria-label="Return to activity">
+        <a
+          href="https://github.com/opentoxic/microscope"
+          class="portal-exit"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="OpenToxic Microscope on GitHub"
+        >
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M8 4H4v12h12v-4M10 10l6-6m-4 0h4v4"/></svg>
-        </RouterLink>
+        </a>
       </div>
     </header>
 
     <div class="app-body">
-      <nav class="signal-sidebar" aria-label="Activity signals">
+      <nav class="signal-sidebar" aria-label="Activity recorders">
         <div class="signal-sidebar__scroll">
           <button
             v-for="(signal, index) in compactSignals"
@@ -128,10 +134,7 @@ onBeforeUnmount(() => {
             <span v-if="index === 2 || index === 6" class="signal-divider" />
           </button>
         </div>
-        <button class="more-signals" aria-label="Open all signals" @click="paletteOpen = true">
-          <span /><span /><span />
-        </button>
-        <RouterLink class="settings-launch" :class="{ 'is-active': route.name === 'settings' }" to="/settings" aria-label="Signal settings">
+        <RouterLink class="settings-launch" :class="{ 'is-active': route.name === 'settings' }" to="/settings" aria-label="Microscope settings">
           <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 6.7a3.3 3.3 0 1 0 0 6.6 3.3 3.3 0 0 0 0-6.6Z"/><path d="m15.5 11.4 1.2 1.1-1.8 3-1.6-.5a6 6 0 0 1-1.9 1.1L11 17.8H7.5L7.1 16a6 6 0 0 1-1.8-1l-1.7.5-1.7-3 1.3-1.2a6 6 0 0 1 0-2.2L2 8l1.8-3 1.6.5a6 6 0 0 1 1.9-1.1L7.7 2h3.5l.4 2.3a6 6 0 0 1 1.8 1l1.7-.5 1.7 3-1.3 1.1a6 6 0 0 1 0 2.5Z"/></svg>
         </RouterLink>
       </nav>
@@ -145,7 +148,7 @@ onBeforeUnmount(() => {
           </button>
           <template v-else-if="route.name !== 'settings'">
             <span class="workspace-kicker" :style="{ '--signal': currentSignal.color }">
-              <i /> {{ currentType ? 'Signal explorer' : 'Runtime now' }}
+              <i /> {{ currentType ? 'Microscope explorer' : 'Runtime now' }}
             </span>
             <h1>{{ title }}</h1>
           </template>
@@ -164,7 +167,7 @@ onBeforeUnmount(() => {
 
     <CommandPalette :open="paletteOpen" @close="paletteOpen = false" />
     <Transition name="shortcut">
-      <div v-if="chordOpen" class="shortcut-hud"><kbd>G</kbd><span>then choose a signal key</span></div>
+      <div v-if="chordOpen" class="shortcut-hud"><kbd>G</kbd><span>then choose a recorder key</span></div>
     </Transition>
   </div>
 </template>
