@@ -42,7 +42,7 @@ func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
 			RequestID:     rc.RequestID,
 			CorrelationID: rc.CorrelationID,
 			Tags:          []string{"level:" + r.Level.String()},
-			Content:       RedactMap(attrs),
+			Content:       h.hub.SanitizeMap(attrs),
 			CreatedAt:     time.Now().UTC(),
 		})
 	}

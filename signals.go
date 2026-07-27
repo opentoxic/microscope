@@ -1,8 +1,10 @@
 package microscope
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 )
@@ -124,7 +126,7 @@ func (h *Hub) recordTyped(ctx context.Context, entryType EntryType, tags []strin
 		RequestID:     meta.RequestID,
 		CorrelationID: meta.CorrelationID,
 		Tags:          tags,
-		Content:       RedactMap(content),
+		Content:       h.SanitizeMap(content),
 		CreatedAt:     time.Now().UTC(),
 	})
 }
@@ -158,13 +160,24 @@ func (t HTTPTransport) RoundTrip(request *http.Request) (*http.Response, error) 
 	duration := time.Since(started)
 	content := map[string]any{
 		"method":      request.Method,
-		"url":         redactedURL(request),
+		"url":         t.Hub.SanitizeURL(request),
 		"host":        request.URL.Host,
 		"duration_ms": milliseconds(duration),
 	}
 	if response != nil {
 		content["status"] = response.StatusCode
 		content["content_length"] = response.ContentLength
+		if t.Hub != nil && !t.Hub.RedactSensitive() && response.Body != nil {
+			maxBytes := t.Hub.cfg.MaxBodyBytes
+			if maxBytes <= 0 {
+				maxBytes = 65536
+			}
+			body, readErr := io.ReadAll(io.LimitReader(response.Body, int64(maxBytes)))
+			if readErr == nil {
+				content["response_body"] = string(body)
+				response.Body = io.NopCloser(bytes.NewReader(body))
+			}
+		}
 	}
 	if err != nil {
 		content["error"] = err.Error()
