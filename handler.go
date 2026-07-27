@@ -22,6 +22,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+prefix+"/api/entries/{id}", h.getEntry)
 	mux.HandleFunc("GET "+prefix+"/api/stream", h.streamEntries)
 	mux.HandleFunc("POST "+prefix+"/api/prune", h.pruneEntries)
+	mux.HandleFunc("GET "+prefix+"/api/storage", h.getStorageUsage)
+	mux.HandleFunc("GET "+prefix+"/api/recording", h.getRecordingState)
+	mux.HandleFunc("PUT "+prefix+"/api/recording", h.setRecordingState)
 	mux.HandleFunc("GET "+prefix+"/api/settings", h.listSettings)
 	mux.HandleFunc("PUT "+prefix+"/api/settings/{type}", h.updateSetting)
 	mux.HandleFunc("POST "+prefix+"/api/insights/analyze", h.analyzeInsights)
@@ -30,6 +33,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 }
 
 func (h *Handler) createCustomEntry(w http.ResponseWriter, r *http.Request) {
+	if h.Hub.RecordingPaused() {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "recording is paused"})
+		return
+	}
 	if !h.Hub.TypeEnabled(TypeCustom) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "custom events are disabled in settings"})
 		return
@@ -59,6 +66,32 @@ func (h *Handler) createCustomEntry(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: time.Now().UTC(),
 	})
 	writeJSON(w, http.StatusAccepted, map[string]string{"id": entryID})
+}
+
+func (h *Handler) getStorageUsage(w http.ResponseWriter, r *http.Request) {
+	usage, err := h.Hub.store.StorageUsage(WithoutTrace(r.Context()))
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, usage)
+}
+
+func (h *Handler) getRecordingState(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"paused": h.Hub.RecordingPaused()})
+}
+
+func (h *Handler) setRecordingState(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 8<<10)
+	var input struct {
+		Paused *bool `json:"paused"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil || input.Paused == nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "paused must be a boolean"})
+		return
+	}
+	h.Hub.SetRecordingPaused(*input.Paused)
+	writeJSON(w, http.StatusOK, map[string]bool{"paused": h.Hub.RecordingPaused()})
 }
 
 func (h *Handler) listSettings(w http.ResponseWriter, r *http.Request) {
