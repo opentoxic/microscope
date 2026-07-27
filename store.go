@@ -19,6 +19,18 @@ type Store interface {
 	ClearAll(ctx context.Context) (int64, error)
 	ListTypeSettings(ctx context.Context) ([]TypeSetting, error)
 	SetTypeEnabled(ctx context.Context, entryType EntryType, enabled bool) (int64, error)
+	StorageUsage(ctx context.Context) (StorageUsage, error)
+}
+
+// StorageUsage reports on-disk size for microscope tables.
+type StorageUsage struct {
+	EntriesMB        float64 `json:"entries_mb"`
+	EntriesDataMB    float64 `json:"entries_data_mb"`
+	EntriesIndexesMB float64 `json:"entries_indexes_mb"`
+	SettingsMB       float64 `json:"settings_mb"`
+	MigrationsMB     float64 `json:"migrations_mb"`
+	TotalMB          float64 `json:"total_mb"`
+	EntryCount       int64   `json:"entry_count"`
 }
 
 // TypeSetting controls both ingestion and retention for one signal type.
@@ -156,7 +168,16 @@ func (s *PostgresStore) ClearAll(ctx context.Context) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return tag.RowsAffected(), nil
+	deleted := tag.RowsAffected()
+	if err := s.reclaimEntriesStorage(ctx); err != nil {
+		return deleted, err
+	}
+	return deleted, nil
+}
+
+func (s *PostgresStore) reclaimEntriesStorage(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, `VACUUM FULL ANALYZE microscope_entries`)
+	return err
 }
 
 func (s *PostgresStore) ListTypeSettings(ctx context.Context) ([]TypeSetting, error) {
@@ -190,6 +211,31 @@ func (s *PostgresStore) ListTypeSettings(ctx context.Context) ([]TypeSetting, er
 		settings = append(settings, setting)
 	}
 	return settings, rows.Err()
+}
+
+func (s *PostgresStore) StorageUsage(ctx context.Context) (StorageUsage, error) {
+	var usage StorageUsage
+	err := s.pool.QueryRow(ctx, `
+		SELECT
+			ROUND(pg_total_relation_size('microscope_entries') / 1048576.0, 2),
+			ROUND(pg_relation_size('microscope_entries') / 1048576.0, 2),
+			ROUND((pg_total_relation_size('microscope_entries') - pg_relation_size('microscope_entries')) / 1048576.0, 2),
+			ROUND(pg_total_relation_size('microscope_settings') / 1048576.0, 2),
+			ROUND(COALESCE((SELECT pg_total_relation_size(oid) FROM pg_class WHERE relname = 'microscope_schema_migrations'), 0) / 1048576.0, 2),
+			(SELECT COUNT(*) FROM microscope_entries)
+	`).Scan(
+		&usage.EntriesMB,
+		&usage.EntriesDataMB,
+		&usage.EntriesIndexesMB,
+		&usage.SettingsMB,
+		&usage.MigrationsMB,
+		&usage.EntryCount,
+	)
+	if err != nil {
+		return StorageUsage{}, err
+	}
+	usage.TotalMB = usage.EntriesMB + usage.SettingsMB + usage.MigrationsMB
+	return usage, nil
 }
 
 func (s *PostgresStore) SetTypeEnabled(ctx context.Context, entryType EntryType, enabled bool) (int64, error) {
