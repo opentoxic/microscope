@@ -44,7 +44,7 @@ const groups = computed(() => ([
 
 const dataTypeSignals = computed(() => signals.filter(signal => signal.type))
 const densities: Array<{ id: Density; label: string; detail: string }> = [
-  { id: 'compact', label: 'Compact', detail: 'Maximum signal density' },
+  { id: 'compact', label: 'Compact', detail: 'Maximum record density' },
   { id: 'comfortable', label: 'Comfortable', detail: 'Balanced for daily use' },
   { id: 'spacious', label: 'Spacious', detail: 'More breathing room' },
 ]
@@ -60,10 +60,10 @@ const cornerStyles: Array<{ id: CornerStyle; label: string }> = [
 ]
 const appearanceToggles = [
   { key: 'motion', label: 'Interface motion', detail: 'Page transitions and animated state changes' },
-  { key: 'dataPulse', label: 'Live data pulse', detail: 'Animate new signals and changing measurements' },
+  { key: 'dataPulse', label: 'Live data pulse', detail: 'Animate new records and changing measurements' },
   { key: 'ambientLight', label: 'Ambient light', detail: 'Slow moving color fields behind the workspace' },
   { key: 'glass', label: 'Glass surfaces', detail: 'Blurred translucent cards and navigation' },
-  { key: 'glow', label: 'Neon glow', detail: 'Luminous edges and signal halos' },
+  { key: 'glow', label: 'Neon glow', detail: 'Luminous edges and recorder halos' },
   { key: 'scanlines', label: 'Scanline texture', detail: 'Subtle terminal display finish' },
   { key: 'grid', label: 'Coordinate grid', detail: 'Technical grid behind workspaces' },
   { key: 'noise', label: 'Film grain', detail: 'Fine texture to reduce flat digital surfaces' },
@@ -151,7 +151,7 @@ onMounted(() => {
     </section>
 
     <div class="settings-tabs">
-      <button class="settings-tab" :class="{ 'is-active': activeTab === 'recording' }" @click="activeTab = 'recording'"><i>01</i><span><strong>Recording</strong><small>Signals and retention</small></span></button>
+      <button class="settings-tab" :class="{ 'is-active': activeTab === 'recording' }" @click="activeTab = 'recording'"><i>01</i><span><strong>Recording</strong><small>Recorders and retention</small></span></button>
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'appearance' }" @click="activeTab = 'appearance'"><i>02</i><span><strong>Interface</strong><small>Theme, motion, density</small></span></button>
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'integrations' }" @click="activeTab = 'integrations'"><i>03</i><span><strong>Integrations</strong><small>SDKs and frameworks</small></span></button>
       <button class="settings-tab" :class="{ 'is-active': activeTab === 'llm' }" @click="activeTab = 'llm'"><i>04</i><span><strong>Intelligence</strong><small>Provider and data scope</small></span></button>
@@ -224,7 +224,7 @@ onMounted(() => {
           <aside><i v-for="index in 6" :key="index" /></aside>
           <main>
             <span>OBSERVABILITY FEED</span>
-            <strong>Every signal. One timeline.</strong>
+            <strong>Every recorder. One timeline.</strong>
             <div><i v-for="index in 18" :key="index" :style="{ height: `${12 + (index * 13) % 38}px` }" /></div>
           </main>
         </div>
@@ -391,7 +391,7 @@ onMounted(() => {
               {{ period.label }}
             </button>
           </div>
-          <small>How far back to include signals when you run analysis.</small>
+          <small>How far back to include records when you run analysis.</small>
         </div>
 
         <div class="llm-field llm-field--full">
@@ -409,7 +409,7 @@ onMounted(() => {
               <span>{{ signal.shortLabel }}</span>
             </button>
           </div>
-          <small>Select which signal types are included in LLM context payloads.</small>
+          <small>Select which recorder types are included in LLM context payloads.</small>
         </div>
 
         <div class="llm-field">
@@ -435,7 +435,7 @@ onMounted(() => {
         title="Test your LLM configuration"
         setup-mode
       />
-      <div v-else-if="analysisLoading" class="llm-insight-empty">Loading recent signals for analysis…</div>
+      <div v-else-if="analysisLoading" class="llm-insight-empty">Loading recent records for analysis…</div>
     </section>
   </AppShell>
 </template>
