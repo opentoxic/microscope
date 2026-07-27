@@ -49,50 +49,39 @@ data to a backend.
 
 ## Using the Go module directly (in-process)
 
+See **[docs/go-integration.md](docs/go-integration.md)** for the full guide.
+
 ```bash
 go get github.com/opentoxic/microscope
+go run github.com/opentoxic/microscope/cmd/install@latest   # optional scaffolding
 ```
 
 ```go
-cfg := microscope.DefaultConfig()
-cfg.Enabled = true
-cfg.Path = "/microscope"
-
-hub := microscope.NewWithTracer(pool, cfg, logger, microscope.NewQueryTracer())
-
-// Optional: tee logs to microscope
-logger = slog.New(microscope.NewSlogHandler(logger.Handler(), hub))
-```
-
-### Bridge request metadata
-
-```go
-microscope.BridgeMiddleware(func(ctx context.Context) microscope.RequestMeta {
-    return microscope.RequestMeta{RequestID: "...", IPAddress: "..."}
+ms, err := microscope.Setup(ctx, microscope.SetupOptions{
+    AppEnv: os.Getenv("APP_ENV"),
+    DSN:    os.Getenv("DATABASE_URL"),
+    Logger: log,
 })
+defer ms.Close()
+
+mux := http.NewServeMux()
+ms.RegisterRoutes(mux)
+http.ListenAndServe(":8080", ms.HTTPHandler(mux, microscope.HTTPOptions{
+    AccessLog: microscope.SimpleAccessLog(ms.Logger),
+}))
 ```
 
-### Register HTTP routes and middleware
-
-```go
-(&microscope.Handler{Hub: hub}).RegisterRoutes(mux)
-
-chain := []func(http.Handler) http.Handler{
-    yourRequestIDMiddleware,
-    microscope.BridgeMiddleware(...),
-    hub.Middleware(),
-    hub.RecoverMiddleware(logger),
-}
-```
+Set `APP_ENV=development` (or `local`) and `MICROSCOPE_ENABLED=true`. Migrations run automatically on setup.
 
 ### Optional watchers
 
-- **SQL**: pass `hub.QueryTracer()` to your pgx pool as `QueryTracer`
-- **Redis**: install `microscope.NewRedisHook(hub)` with `redisClient.AddHook`
-- **Kafka / Redpanda**: wrap kafka-go clients with `microscope.NewKafkaWriter(writer, hub)` and `microscope.NewKafkaReader(reader, hub)`
-- **Outgoing HTTP**: use `hub.WrapHTTPClient(client)`
-- **Cache, jobs, schedules, mail, WebSockets, metrics, and custom events**: use the typed `hub.Record*` methods
-- **Performance spans**: `done := hub.Timed(ctx, "operation", fields)` and call `done(err)` when the operation finishes
+- **SQL**: `ms.QueryTracer()` on pgx pool (before `Bind`)
+- **Redis**: `ms.RedisHook()` with `redisClient.AddHook`
+- **Kafka / Redpanda**: `microscope.NewKafkaWriter` / `NewKafkaReader`, or `ms.ClusterHealthChecker(brokers)`
+- **Outgoing HTTP**: `ms.Hub().WrapHTTPClient(client)`
+- **Domain events / OTP**: `ms.WrapEventPublisher`, `ms.WrapOTPNotifier`
+- **Cache, jobs, schedules, mail, WebSockets, metrics, custom events**: typed `hub.Record*` methods
+- **Performance spans**: `done := hub.Timed(ctx, "operation", fields)` and call `done(err)` when finished
 
 New entries are pushed to the workspace over server-sent events. Polling is retained only as a
 low-frequency recovery path.
@@ -177,5 +166,7 @@ npm run dev   # Vite on :5173, proxies API to :8093
 | `Path` | `/microscope` | Dashboard and API prefix |
 | `RetentionHours` | `24` | Auto-prune entries older than this |
 | `MaxBodyBytes` | `65536` | Max request/response body captured |
+| `AllowedEnvs` | `development`, `local` | App environments where microscope runs |
+| `AutoMigrate` | `true` | Run embedded migrations on `Setup()` |
 
-microscope is active only when `APP_ENV=development` and `Enabled` is true.
+microscope is active when `APP_ENV` is in `AllowedEnvs` and `Enabled` is true.
