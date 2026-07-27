@@ -2,7 +2,7 @@
 import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { BatchTypeGroup } from '../types'
-import { entryDuration, signalFor, summarize, timeAgo } from '../utils'
+import { entryDuration, formatRecordDate, formatRecordTime, signalFor, summarize, timeAgo } from '../utils'
 
 const props = defineProps<{ groups: BatchTypeGroup[]; activeType: string }>()
 const router = useRouter()
@@ -41,6 +41,10 @@ function groupDuration(group: BatchTypeGroup): number {
           <span v-if="groupDuration(group)">Combined cost · {{ groupDuration(group) }}ms</span>
         </div>
         <button v-for="entry in group.entries" :key="entry.id" class="relation-row" :style="{ '--signal': signalFor(entry.type).color }" @click="router.push(`/entries/${entry.id}`)">
+          <span class="relation-moment" :title="`${formatRecordDate(entry.created_at)} ${formatRecordTime(entry.created_at)}`">
+            <strong>{{ formatRecordTime(entry.created_at) }}</strong>
+            <small>{{ formatRecordDate(entry.created_at) }}</small>
+          </span>
           <span class="relation-node"><i /></span>
           <span class="relation-type">{{ signalFor(entry.type).shortLabel }}</span>
           <strong>{{ summarize(entry) }}</strong>

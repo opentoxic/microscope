@@ -11,7 +11,7 @@ import EntryInsight from '../components/EntryInsight.vue'
 import LLMInsightPanel from '../components/LLMInsightPanel.vue'
 import SignalIcon from '../components/SignalIcon.vue'
 import SqlInspector from '../components/SqlInspector.vue'
-import { entryDuration, entryMeta, entrySignalColor, formatClock, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
+import { entryDuration, entryMeta, entrySignalColor, formatRecordDate, formatRecordTime, formatTimeLong, metricLanguageLabel, metricUnitLabel, methodClass, signalFor, statusClass, summarize, timeAgo, typeBadgeClass } from '../utils'
 import { llmSettings } from '../llmSettings'
 import { signalEnabled } from '../settings'
 
@@ -101,7 +101,7 @@ function openTimelineEntry(entry: Entry) {
     </template>
 
     <div v-if="loading" class="inspector-loading">
-      <span><i /></span><strong>Reconstructing trace</strong><small>Joining request context and related signals…</small>
+      <span><i /></span><strong>Reconstructing trace</strong><small>Joining request context and related records…</small>
     </div>
     <div v-else-if="error" class="inspector-error">
       <span>404 / trace</span><strong>{{ error }}</strong><p>It may have been pruned from the recorder.</p>
@@ -142,7 +142,7 @@ function openTimelineEntry(entry: Entry) {
             <h2>{{ summarize(trace.entry) }}</h2>
             <div class="comparison-vitals">
               <span><small>Duration</small><strong>{{ entryDuration(trace.entry) || '—' }}<i v-if="entryDuration(trace.entry)">ms</i></strong></span>
-              <span><small>Signals</small><strong>{{ trace.batch.length }}</strong></span>
+              <span><small>Records</small><strong>{{ trace.batch.length }}</strong></span>
               <span><small>SQL</small><strong>{{ trace.batch.filter(item => item.type === 'query').length }}</strong></span>
             </div>
             <div class="comparison-bar"><i :style="{ width: `${Math.max(4, entryDuration(trace.entry) / Math.max(entryDuration(data.entry), entryDuration(comparison.entry), 1) * 100)}%` }" /></div>
@@ -162,7 +162,7 @@ function openTimelineEntry(entry: Entry) {
       <div class="inspector-grid">
         <aside class="execution-map">
           <header>
-            <div><span>Execution map</span><small>{{ timeline.length }} signals</small></div>
+            <div><span>Execution map</span><small>{{ timeline.length }} records</small></div>
             <strong>{{ totalDuration }}ms</strong>
           </header>
           <div class="time-ruler"><span>0</span><span>25%</span><span>50%</span><span>75%</span><span>{{ totalDuration }}ms</span></div>
@@ -174,9 +174,13 @@ function openTimelineEntry(entry: Entry) {
               :style="{ '--signal': entrySignalColor(entry) }"
               @click="openTimelineEntry(entry)"
             >
+              <span class="timeline-moment" :title="formatTimeLong(entry.created_at)">
+                <strong>{{ formatRecordTime(entry.created_at) }}</strong>
+                <small>{{ formatRecordDate(entry.created_at) }}</small>
+              </span>
               <span class="timeline-node"><SignalIcon :type="entry.type" size="sm" /></span>
               <span class="timeline-copy"><strong>{{ signalFor(entry.type).shortLabel }}</strong><small>{{ summarize(entry) }}</small></span>
-              <span class="timeline-cost">{{ entryDuration(entry) ? `${entryDuration(entry)}ms` : formatClock(entry.created_at) }}</span>
+              <span class="timeline-cost">{{ entryDuration(entry) ? `${entryDuration(entry)}ms` : '—' }}</span>
               <span class="timeline-bar"><i :style="{ width: timelineWidth(entry) }" /></span>
             </button>
           </div>
@@ -193,7 +197,7 @@ function openTimelineEntry(entry: Entry) {
             <div><span>SQL queries</span><strong>{{ queryCount }}</strong><small>in this trace</small></div>
             <div v-if="signalEnabled('metric')"><span>Memory</span><strong>{{ data.entry.content?.memory_mb || '—' }}<small v-if="data.entry.content?.memory_mb">MB</small></strong><small>peak allocation</small></div>
             <div v-if="signalEnabled('metric')"><span>{{ data.entry.type === 'metric' ? metricUnitLabel(data.entry) : 'Concurrency' }}</span><strong>{{ data.entry.content?.value ?? '—' }}</strong><small v-if="data.entry.type === 'metric'">{{ metricLanguageLabel(data.entry) }}</small><small v-else>at completion</small></div>
-            <div><span>Exceptions</span><strong :class="{ danger: errorCount }">{{ errorCount }}</strong><small>related signals</small></div>
+            <div><span>Exceptions</span><strong :class="{ danger: errorCount }">{{ errorCount }}</strong><small>related records</small></div>
           </section>
 
           <section class="trace-facts">
@@ -209,7 +213,7 @@ function openTimelineEntry(entry: Entry) {
           <section v-if="data.entry.type === 'exception'" class="exception-focus">
             <header><span>Unhandled exception</span><strong>{{ data.entry.content?.kind || 'Application runtime' }}</strong></header>
             <h2>{{ data.entry.content?.message || title }}</h2>
-            <p>Signal preserved the surrounding request and execution context for this failure.</p>
+            <p>Microscope preserved the surrounding request and execution context for this failure.</p>
           </section>
 
           <SqlInspector
