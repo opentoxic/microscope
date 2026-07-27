@@ -10,9 +10,9 @@ by the Go core.
 - **Go core** (repo root, module `github.com/opentoxic/microscope`): the hub, storage, HTTP API,
   and embedded UI. Import it directly in a Go service, or run it standalone via `cmd/server`.
 - **`sdk/python`**: pip package (`microscope-client`), with `Django` and `FastAPI` integrations.
-- **`sdk/typescript`**: npm package (`@qobly/microscope-client`), with `Express` and `NestJS` integrations.
+- **`sdk/typescript`**: npm package (`@opentoxic/microscope-client`), with `Express` and `NestJS` integrations.
 - **`sdk/ruby`**: gem (`microscope_client`), stdlib-only.
-- **`sdk/php`**: composer package (`qobly/microscope-client`), with a `Laravel` service provider.
+- **`sdk/php`**: composer package (`opentoxic/microscope-client`), with a `Laravel` service provider.
 - **`sdk/elixir`**: hex package (`microscope_client`).
 
 Any stack can record entries by calling the HTTP API directly, so the Go core doubles as the
@@ -93,9 +93,9 @@ can record entries without touching Go:
 
 ```bash
 pip install microscope-client          # Python (Django, FastAPI integrations included)
-npm install @qobly/microscope-client   # TypeScript / JavaScript (Express, NestJS integrations included)
+npm install @opentoxic/microscope-client   # TypeScript / JavaScript (Express, NestJS integrations included)
 gem install microscope_client          # Ruby
-composer require qobly/microscope-client  # PHP (Laravel integration included)
+composer require opentoxic/microscope-client  # PHP (Laravel integration included)
 mix deps.get microscope_client         # Elixir
 ```
 
@@ -107,7 +107,7 @@ client.record("payment_charged", content={"amount": 4200})
 ```
 
 ```ts
-import { MicroscopeClient } from "@qobly/microscope-client";
+import { MicroscopeClient } from "@opentoxic/microscope-client";
 
 const client = new MicroscopeClient({ baseUrl: "http://localhost:8093/microscope" });
 await client.record("payment_charged", { amount: 4200 });
@@ -119,7 +119,7 @@ client.record("payment_charged", content: { amount: 4200 })
 ```
 
 ```php
-$client = new Qobly\Microscope\MicroscopeClient("http://localhost:8093/microscope");
+$client = new Opentoxic\Microscope\MicroscopeClient("http://localhost:8093/microscope");
 $client->record("payment_charged", ["amount" => 4200]);
 ```
 
@@ -145,9 +145,9 @@ See each SDK's README for full docs and framework integrations:
 | POST | `/microscope/api/entries` | Record a named custom timeline marker |
 | POST | `/microscope/api/prune` | Clear all entries |
 | GET | `/microscope/api/settings` | List recording policies and retained counts |
-| PUT | `/microscope/api/settings/{type}` | Enable or disable a signal (`{"enabled":false}`) |
+| PUT | `/microscope/api/settings/{type}` | Enable or disable a recorder (`{"enabled":false}`) |
 
-Disabling a signal is destructive by design: the hub closes its ingestion gate, transactionally
+Disabling a recorder is destructive by design: the hub closes its ingestion gate, transactionally
 deletes every retained entry of that type, and broadcasts the mutation to connected dashboards.
 Re-enabling it resumes recording new entries; deleted history is not restored.
 
