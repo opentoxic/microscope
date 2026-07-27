@@ -116,19 +116,16 @@ func TestHandlerListAndGet(t *testing.T) {
 	}
 }
 
-func TestNotificationRedactsOTP(t *testing.T) {
+func TestNotificationRecordsOTPWhenRedactionEnabled(t *testing.T) {
 	store := &memStore{}
-	hub := NewWithStore(store, DefaultConfig(), slog.New(slog.NewTextHandler(io.Discard, nil)))
+	cfg := DefaultConfig()
+	cfg.RedactSensitive = true
+	hub := NewWithStore(store, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	ctx := WithBatchID(context.Background(), "batch-1")
-	hub.Record(ctx, Entry{
-		Type: TypeNotification,
-		Content: map[string]any{
-			"kind":  "signup_otp",
-			"email": "user@example.com",
-			"otp":   "[REDACTED]",
-		},
-		CreatedAt: time.Now().UTC(),
+	hub.RecordNotification(ctx, "signup_otp", map[string]any{
+		"email": "user@example.com",
+		"otp":   hub.SanitizeOTP("123456"),
 	})
 
 	waitForEntries(t, store, 1)
