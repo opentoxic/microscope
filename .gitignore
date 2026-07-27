@@ -1,2 +1,7 @@
 node_modules/
 *.log
+**/__pycache__/
+*.tsbuildinfo
+/sdk/elixir/_build/
+/sdk/elixir/deps/
+/sdk/typescript/dist/
