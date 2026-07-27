@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/qobly/qobly-identity-service/internal/infrastructure/http/middleware"
 )
+
+type testRequestMetaKey struct{}
 
 func TestMiddlewareSkipsMicroscopePaths(t *testing.T) {
 	store := &memStore{}
@@ -28,19 +28,22 @@ func TestMiddlewareSkipsMicroscopePaths(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.Chain(mux,
-		middleware.RequestID(nil),
-		BridgeMiddleware(func(ctx context.Context) RequestMeta {
-			rc := middleware.FromContext(ctx)
-			return RequestMeta{
-				RequestID:     rc.RequestID,
-				CorrelationID: rc.CorrelationID,
-				IPAddress:     rc.IPAddress,
-				UserAgent:     rc.UserAgent,
+	bridge := BridgeMiddleware(func(ctx context.Context) RequestMeta {
+		meta, _ := ctx.Value(testRequestMetaKey{}).(RequestMeta)
+		return meta
+	})
+	identity := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			meta := RequestMeta{
+				RequestID:     "request-test",
+				CorrelationID: "correlation-test",
+				IPAddress:     "127.0.0.1",
+				UserAgent:     "microscope-test",
 			}
-		}),
-		hub.Middleware(),
-	)
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), testRequestMetaKey{}, meta)))
+		})
+	}
+	handler := identity(bridge(hub.Middleware()(mux)))
 
 	req := httptest.NewRequest(http.MethodGet, "/microscope", nil)
 	rr := httptest.NewRecorder()
@@ -202,6 +205,24 @@ func TestEntryDetailPage(t *testing.T) {
 	}
 	if len(detail.BatchGroups) < 2 {
 		t.Fatalf("expected related batch groups")
+	}
+}
+
+func TestSettingsPageServesSPA(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), nil)
+	h := &Handler{Hub: hub}
+	mux := http.NewServeMux()
+	h.RegisterRoutes(mux)
+
+	req := httptest.NewRequest(http.MethodGet, "/microscope/settings", nil)
+	rr := httptest.NewRecorder()
+	mux.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("settings spa status %d", rr.Code)
+	}
+	if !strings.Contains(rr.Body.String(), `<div id="app"`) {
+		t.Fatalf("expected spa index for settings route")
 	}
 }
 
