@@ -41,6 +41,9 @@ func (m *memStore) List(_ context.Context, f ListFilter) (ListResult, error) {
 		if f.Type != "" && e.Type != f.Type {
 			continue
 		}
+		if f.RequestID != "" && e.RequestID != f.RequestID {
+			continue
+		}
 		filtered = append(filtered, e)
 	}
 	return ListResult{Entries: filtered, Total: len(filtered)}, nil
@@ -100,6 +103,21 @@ func (m *memStore) ListTypeSettings(_ context.Context) ([]TypeSetting, error) {
 	return out, nil
 }
 
+func (m *memStore) StorageUsage(_ context.Context) (StorageUsage, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	count := int64(len(m.entries))
+	return StorageUsage{
+		EntriesMB:        float64(count) * 0.01,
+		EntriesDataMB:    float64(count) * 0.008,
+		EntriesIndexesMB: float64(count) * 0.002,
+		SettingsMB:       0.01,
+		MigrationsMB:     0.03,
+		TotalMB:          float64(count)*0.01 + 0.01 + 0.03,
+		EntryCount:       count,
+	}, nil
+}
+
 func (m *memStore) SetTypeEnabled(_ context.Context, entryType EntryType, enabled bool) (int64, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -155,6 +173,26 @@ func TestHubRecord(t *testing.T) {
 	if store.entries[0].BatchID != "batch-1" {
 		t.Fatalf("expected batch-1, got %s", store.entries[0].BatchID)
 	}
+}
+
+func TestRecordingPausedStopsRecord(t *testing.T) {
+	store := &memStore{}
+	hub := NewWithStore(store, DefaultConfig(), nil)
+
+	hub.SetRecordingPaused(true)
+	hub.Record(context.Background(), Entry{Type: TypeMetric, Content: map[string]any{"name": "blocked"}})
+	time.Sleep(30 * time.Millisecond)
+
+	store.mu.Lock()
+	count := len(store.entries)
+	store.mu.Unlock()
+	if count != 0 {
+		t.Fatalf("expected no entries while paused, got %d", count)
+	}
+
+	hub.SetRecordingPaused(false)
+	hub.Record(context.Background(), Entry{Type: TypeMetric, Content: map[string]any{"name": "allowed"}})
+	waitForStoredEntries(t, store, 1)
 }
 
 func TestEnabled(t *testing.T) {
