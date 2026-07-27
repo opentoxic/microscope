@@ -29,20 +29,24 @@ type Hub struct {
 	enabled     map[EntryType]bool
 	recordingMu sync.RWMutex
 	recordingPaused bool
+	redactionMu     sync.RWMutex
+	redactSensitive bool
 }
 
 // New creates a Hub backed by PostgreSQL.
 func New(pool *pgxpool.Pool, cfg Config, _ *slog.Logger) *Hub {
 	h := &Hub{
-		store:       NewPostgresStore(pool),
-		cfg:         cfg,
-		log:         silentLogger,
-		stopCh:      make(chan struct{}),
-		subscribers: make(map[chan Entry]struct{}),
-		controlSubs: make(map[chan ControlEvent]struct{}),
-		enabled:     defaultTypeSettings(),
+		store:           NewPostgresStore(pool),
+		cfg:             cfg,
+		log:             silentLogger,
+		stopCh:          make(chan struct{}),
+		subscribers:     make(map[chan Entry]struct{}),
+		controlSubs:     make(map[chan ControlEvent]struct{}),
+		enabled:         defaultTypeSettings(),
+		redactSensitive: cfg.RedactSensitive,
 	}
 	h.loadTypeSettings()
+	h.loadRedactionSetting()
 	h.startPruner()
 	h.startRuntimeSampler()
 	return h
@@ -98,15 +102,17 @@ func NewWithTracer(pool *pgxpool.Pool, cfg Config, log *slog.Logger, tracer *Que
 // NewWithStore creates a Hub with a custom store (for tests).
 func NewWithStore(store Store, cfg Config, _ *slog.Logger) *Hub {
 	h := &Hub{
-		store:       store,
-		cfg:         cfg,
-		log:         silentLogger,
-		stopCh:      make(chan struct{}),
-		subscribers: make(map[chan Entry]struct{}),
-		controlSubs: make(map[chan ControlEvent]struct{}),
-		enabled:     defaultTypeSettings(),
+		store:           store,
+		cfg:             cfg,
+		log:             silentLogger,
+		stopCh:          make(chan struct{}),
+		subscribers:     make(map[chan Entry]struct{}),
+		controlSubs:     make(map[chan ControlEvent]struct{}),
+		enabled:         defaultTypeSettings(),
+		redactSensitive: cfg.RedactSensitive,
 	}
 	h.loadTypeSettings()
+	h.loadRedactionSetting()
 	return h
 }
 
@@ -256,10 +262,11 @@ func (h *Hub) Subscribe(buffer int) (<-chan Entry, func()) {
 
 // ControlEvent describes a live mutation that affects already-rendered entries.
 type ControlEvent struct {
-	Action  string    `json:"action"`
-	Type    EntryType `json:"type,omitempty"`
-	Deleted int64     `json:"deleted"`
-	Paused  *bool     `json:"paused,omitempty"`
+	Action          string    `json:"action"`
+	Type            EntryType `json:"type,omitempty"`
+	Deleted         int64     `json:"deleted"`
+	Paused          *bool     `json:"paused,omitempty"`
+	RedactSensitive *bool     `json:"redact_sensitive,omitempty"`
 }
 
 // SubscribeControls returns a live stream of prune and recording-policy mutations.
