@@ -81,14 +81,38 @@ const signalGradient = computed(() => {
   })
   return `conic-gradient(${stops.join(', ')})`
 })
-const sparkBars = computed(() => Array.from({ length: 32 }, (_, index) => {
-  const entry = entries.value[index % Math.max(1, entries.value.length)]
-  if (!entry) return { height: 7, color: '#343a3b' }
-  return {
-    height: 8 + Math.min(34, entryDuration(entry) / 24) + ((index * 7) % 12),
+const errorRate = computed(() => entries.value.length ? Math.round(errorCount.value / entries.value.length * 100) : 0)
+const typeMixTotal = computed(() => typeCounts.value.reduce((sum, item) => sum + item.count, 0))
+const attentionCount = computed(() => errorCount.value + slowEntries.value.length)
+const attentionItems = computed(() => [...entries.value.filter(isError), ...slowEntries.value].slice(0, 4))
+const pulseHealth = computed(() => {
+  if (errorCount.value > 5 || errorRate.value > 15) return { label: 'Critical', tone: 'critical' as const }
+  if (errorCount.value > 0 || slowEntries.value.length > 3 || errorRate.value > 5) return { label: 'Elevated', tone: 'warning' as const }
+  if (!entries.value.length) return { label: 'Idle', tone: 'idle' as const }
+  return { label: 'Healthy', tone: 'healthy' as const }
+})
+const pulseMessage = computed(() => {
+  if (!entries.value.length) return 'Waiting for the first records from your application.'
+  if (pulseHealth.value.tone === 'critical') return 'Error volume is elevated. Review failing operations in the attention queue.'
+  if (pulseHealth.value.tone === 'warning') return 'Some operations need review. Monitor errors and slow paths.'
+  return 'Recorder is receiving records normally. No sustained pressure detected.'
+})
+const sparkBars = computed(() => {
+  const recent = [...entries.value]
+    .sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at))
+    .slice(-32)
+  const maxDuration = Math.max(1, ...recent.map(entryDuration))
+  const bars = recent.map((entry) => ({
+    height: 6 + Math.round((entryDuration(entry) / maxDuration) * 40),
     color: isError(entry) ? '#ff5f7e' : signalFor(entry.type).color,
-  }
-}))
+  }))
+  const padding = Array.from({ length: Math.max(0, 32 - bars.length) }, () => ({
+    height: 4,
+    color: 'rgba(37, 50, 57, .7)',
+    empty: true,
+  }))
+  return [...padding, ...bars.map((bar) => ({ ...bar, empty: false }))]
+})
 const selectedSignal = computed(() => signalFor(currentType.value))
 
 watch(() => [route.query.type, route.query.search, route.query.view, route.query.signals, route.query.tags], ([type, routeSearch, view, routeSignals, routeTags]) => {
@@ -307,19 +331,54 @@ onUnmounted(() => {
   <AppShell>
     <template #status>{{ status }}</template>
 
-    <section v-if="!currentType" class="runtime-readout">
-      <div class="runtime-number">
-        <span>Captured now</span>
-        <strong>{{ entries.length.toLocaleString() }}</strong>
-        <small>signals in the current window</small>
+    <section v-if="!currentType" class="runtime-readout" aria-label="Captured now summary">
+      <div class="runtime-hero">
+        <div class="runtime-number">
+          <span class="runtime-number__label">Captured now</span>
+          <strong>{{ entries.length.toLocaleString() }}</strong>
+          <p class="runtime-number__copy">
+            signals in the current window
+            <span v-if="typeCounts.length">{{ typeCounts.length }} active recorder types</span>
+          </p>
+        </div>
+        <div class="runtime-spectrum-wrap" aria-hidden="true">
+          <div class="runtime-spectrum" :style="{ background: signalGradient }">
+            <span>{{ entries.length }}</span>
+          </div>
+        </div>
       </div>
       <div class="runtime-vitals">
-        <div class="vital-error"><span>Error pressure</span><strong :class="{ danger: errorCount }">{{ errorCount }}</strong><small>{{ entries.length ? Math.round(errorCount / entries.length * 100) : 0 }}%</small></div>
-        <div class="vital-slow"><span>Slow paths</span><strong>{{ slowEntries.length }}</strong><small>over 500ms</small></div>
-        <div class="vital-latency"><span>p95 latency</span><strong>{{ p95 }}</strong><small>recorded spans</small></div>
+        <div class="runtime-vital vital-error" :class="{ 'is-hot': errorCount > 0 }">
+          <span>Error pressure</span>
+          <strong>{{ errorRate }}%</strong>
+          <small>{{ errorCount }} errors</small>
+        </div>
+        <div class="runtime-vital vital-slow" :class="{ 'is-hot': slowEntries.length > 0 }">
+          <span>Slow paths</span>
+          <strong>{{ slowEntries.length }}</strong>
+          <small>over 500ms</small>
+        </div>
+        <div class="runtime-vital vital-latency">
+          <span>p95 latency</span>
+          <strong>{{ p95 }}</strong>
+          <small>recorded spans</small>
+        </div>
       </div>
-      <div class="runtime-wave" aria-hidden="true">
-        <i v-for="(bar, index) in sparkBars" :key="index" :style="{ height: `${bar.height}px`, background: bar.color }" />
+      <div class="runtime-wave-panel">
+        <header>
+          <span>Recent intensity</span>
+          <small>last 32 records</small>
+        </header>
+        <div class="runtime-wave-chart">
+          <div class="runtime-wave" aria-hidden="true">
+            <i
+              v-for="(bar, index) in sparkBars"
+              :key="index"
+              :class="{ 'is-empty': bar.empty }"
+              :style="{ height: `${bar.height}px`, background: bar.color }"
+            />
+          </div>
+        </div>
       </div>
     </section>
 
@@ -328,11 +387,11 @@ onUnmounted(() => {
         <span><SignalIcon :type="selectedSignal.type" size="md" /></span>
         <div><small>Active recorder</small><strong>{{ selectedSignal.label }}</strong></div>
       </div>
-      <div class="channel-stat"><small>Retained</small><strong>{{ total }}</strong><span>signals</span></div>
+      <div class="channel-stat"><small>Retained</small><strong>{{ total }}</strong><span>records</span></div>
       <div class="channel-stat"><small>Average cost</small><strong>{{ averageDuration }}</strong><span>timed operations</span></div>
       <div class="channel-stat"><small>Maximum cost</small><strong>{{ maximumDuration }}</strong><span>current window</span></div>
       <div class="channel-stat"><small>Execution batches</small><strong>{{ batchCount }}</strong><span>linked contexts</span></div>
-      <div class="channel-state"><i :class="{ connected: streamConnected }" /><span>{{ streamConnected ? 'Receiving live signals' : 'Reconnecting stream' }}</span></div>
+      <div class="channel-state"><i :class="{ connected: streamConnected }" /><span>{{ streamConnected ? 'Receiving live records' : 'Reconnecting stream' }}</span></div>
     </section>
 
     <SystemVisuals v-if="!currentType" :entries="entries" />
@@ -351,7 +410,7 @@ onUnmounted(() => {
             <span class="stream-glyph" :style="{ '--signal': selectedSignal.color }"><SignalIcon :type="selectedSignal.type" size="md" /></span>
             <div>
               <strong>{{ currentType ? selectedSignal.label : 'Activity stream' }}</strong>
-              <small>{{ visibleEntries.length }} visible signals</small>
+              <small>{{ visibleEntries.length }} visible records</small>
             </div>
           </div>
           <div class="stream-filters">
@@ -394,7 +453,7 @@ onUnmounted(() => {
         </header>
 
         <div class="label-filter-strip">
-          <span class="label-filter-title">Signals</span>
+          <span class="label-filter-title">Recorders</span>
           <div class="label-filter-scroll">
             <button
               v-for="signal in filterSignals"
@@ -427,7 +486,11 @@ onUnmounted(() => {
         </Transition>
 
         <div class="stream-columns">
-          <span>Moment</span><span>Signal / context</span><span>Cost</span><span />
+          <span>Timestamp</span>
+          <span class="stream-col-pipeline" aria-hidden="true" />
+          <span>Type / context</span>
+          <span>Cost</span>
+          <span class="stream-col-tools" aria-hidden="true" />
         </div>
         <div v-if="loading && !entries.length" class="stream-loading" aria-label="Loading activity">
           <div v-for="index in 8" :key="index"><span /><i /><b :style="{ width: `${38 + (index * 13) % 42}%` }" /></div>
@@ -435,7 +498,7 @@ onUnmounted(() => {
         <div v-else-if="!visibleEntries.length" class="signal-empty">
           <div class="empty-orbit" :style="{ '--signal': selectedSignal.color }"><span /><i /><b /></div>
           <strong>The stream is quiet</strong>
-          <p>Activity will surface here the instant your application emits it. This signal is fully recorder-backed and ready.</p>
+          <p>Activity will surface here the instant your application emits it. This recorder is fully backed and ready.</p>
           <button v-if="search || filter !== 'all' || selectedTypes.length || selectedTags.length" @click="search = ''; filter = 'all'; clearLabels(); load()">Reset filters</button>
         </div>
         <EntryTable v-else :entries="visibleEntries" :current-type="currentType" />
@@ -448,32 +511,77 @@ onUnmounted(() => {
       </section>
 
       <aside v-if="!currentType" class="pulse-pane">
-        <section class="pulse-section">
-          <header><span>Application pulse</span><strong><i /> Healthy</strong></header>
+        <section class="pulse-section pulse-health" :class="`is-${pulseHealth.tone}`">
+          <header>
+            <span>Application pulse</span>
+            <strong class="pulse-status" :class="`is-${pulseHealth.tone}`"><i />{{ pulseHealth.label }}</strong>
+          </header>
           <div class="pulse-orbit">
             <div class="pulse-spectrum" :style="{ background: signalGradient }" />
-            <div class="orbit-core"><span>{{ entries.length }}</span><small>events</small></div>
+            <div class="orbit-core">
+              <span>{{ entries.length }}</span>
+              <small>events</small>
+            </div>
             <i v-for="index in 12" :key="index" :style="{ '--i': index }" />
           </div>
-          <p>Recorder is receiving signals normally. No sustained pressure detected.</p>
+          <div class="pulse-metrics">
+            <span><small>Error rate</small><strong>{{ errorRate }}<i>%</i></strong></span>
+            <span><small>P95 cost</small><strong>{{ p95 }}</strong></span>
+            <span><small>Types active</small><strong>{{ typeCounts.length }}</strong></span>
+          </div>
+          <p>{{ pulseMessage }}</p>
         </section>
 
         <section class="pulse-section signal-mix">
-          <header><span>Signal mix</span><small>current window</small></header>
-          <div v-for="item in typeCounts" :key="item.type" class="mix-row" :style="{ '--signal': item.color, '--width': `${item.count / maxTypeCount * 100}%` }">
-            <span><SignalIcon :type="item.type" size="sm" /> {{ item.shortLabel }}</span><i><b /></i><strong>{{ item.count }}</strong>
+          <header>
+            <span>Type mix</span>
+            <small>{{ typeMixTotal }} records · current window</small>
+          </header>
+          <div v-if="typeCounts.length" class="mix-stack">
+            <div
+              v-for="(item, index) in typeCounts"
+              :key="item.type"
+              class="mix-row"
+              :style="{ '--signal': item.color, '--width': `${item.count / maxTypeCount * 100}%` }"
+            >
+              <span class="mix-rank">{{ index + 1 }}</span>
+              <span class="mix-label"><SignalIcon :type="item.type" size="sm" />{{ item.shortLabel }}</span>
+              <i><b /></i>
+              <strong>{{ item.count }}</strong>
+              <em>{{ Math.round(item.count / Math.max(1, typeMixTotal) * 100) }}%</em>
+            </div>
           </div>
-          <div v-if="!typeCounts.length" class="pulse-muted">Waiting for a signal profile…</div>
+          <div v-else class="pulse-muted">Waiting for a recorder profile…</div>
         </section>
 
-        <section class="pulse-section attention-list">
-          <header><span>Needs attention</span><small>{{ errorCount + slowEntries.length }}</small></header>
-          <button v-for="entry in [...entries.filter(isError), ...slowEntries].slice(0, 4)" :key="entry.id" @click="$router.push(`/entries/${entry.id}`)">
-            <i :style="{ background: isError(entry) ? '#ff5f7e' : '#e9ad58' }" />
-            <span><strong>{{ signalFor(entry.type).shortLabel }}</strong><small>{{ entryDuration(entry) ? `${entryDuration(entry)}ms` : 'error' }}</small></span>
-            <svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
-          </button>
-          <div v-if="!errorCount && !slowEntries.length" class="pulse-muted">Nothing is asking for attention.</div>
+        <section class="pulse-section attention-list" :class="{ 'has-items': attentionCount }">
+          <header>
+            <span>Needs attention</span>
+            <small class="attention-badge" :class="{ active: attentionCount }">{{ attentionCount }}</small>
+          </header>
+          <div v-if="attentionCount" class="attention-stack">
+            <button
+              v-for="entry in attentionItems"
+              :key="entry.id"
+              :class="{ error: isError(entry) }"
+              @click="$router.push(`/entries/${entry.id}`)"
+            >
+              <span class="attention-icon" :style="{ '--signal': signalFor(entry.type).color }">
+                <SignalIcon :type="entry.type" size="sm" />
+              </span>
+              <span class="attention-copy">
+                <strong>{{ signalFor(entry.type).shortLabel }}</strong>
+                <small>{{ isError(entry) ? 'Error signal' : 'Slow path' }}</small>
+              </span>
+              <b>{{ entryDuration(entry) ? `${entryDuration(entry)}ms` : 'error' }}</b>
+              <svg viewBox="0 0 20 20"><path d="m8 5 5 5-5 5"/></svg>
+            </button>
+          </div>
+          <div v-else class="pulse-muted pulse-calm">
+            <span class="pulse-calm__ring" aria-hidden="true"><i /></span>
+            <strong>All clear</strong>
+            <p>Nothing is asking for attention.</p>
+          </div>
         </section>
       </aside>
     </div>
