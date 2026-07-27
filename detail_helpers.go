@@ -177,7 +177,7 @@ func prettyContent(v string) string {
 
 func looksLikeJSON(v string) bool {
 	v = strings.TrimSpace(v)
-	return strings.HasPrefix(v, "{") || strings.HasPrefix(v, "[")
+	return json.Valid([]byte(v))
 }
 
 func prettyJSONString(v string) string {

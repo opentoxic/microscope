@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Entry } from '../types'
-import { entryDuration, isError, metricLanguageLabel, signalFor, summarize } from '../utils'
+import { entryDuration, entrySignalColor, isError, metricLanguageLabel, signalFor, summarize } from '../utils'
 import SignalIcon from './SignalIcon.vue'
 
 const props = defineProps<{ entry: Entry; batch: Entry[] }>()
+const router = useRouter()
 
 const ordered = computed(() => [...props.batch].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)))
 const errors = computed(() => ordered.value.filter(isError))
@@ -28,25 +30,20 @@ const finding = computed(() => {
 })
 const diagnosis = computed(() => {
   if (errors.value.length) return `${errors.value.length} error signal${errors.value.length === 1 ? '' : 's'} occurred in the same execution context. The first failure is the strongest starting point.`
-  if (queries.value.length > 8) return `${queries.value.length} SQL operations were correlated with this execution. Repeated statements or N+1 access may be contributing cost.`
+  if (queries.value.length > 8) return `${queries.value.length} SQL operations belong to this execution. Repeated statements or N+1 access may be contributing cost.`
   if (entryDuration(slowest.value) >= 500) return `${signalFor(slowest.value.type).label} is the dominant recorded span at ${entryDuration(slowest.value)}ms.`
-  return `No failure signature was detected across ${props.batch.length} correlated signals. The evidence is consistent with expected execution.`
+  return `No failure signature was detected across ${props.batch.length} linked operations. The trace is consistent with expected execution.`
 })
 const actions = computed(() => {
-  if (errors.value.length) return ['Open the earliest crimson evidence below', 'Inspect stack and payload at the failure boundary', 'Compare against a successful request from the same route']
+  if (errors.value.length) return ['Open the earliest crimson operation below', 'Inspect stack and payload at the failure boundary', 'Compare against a successful request from the same route']
   if (queries.value.length > 8) return ['Group repeated SQL statements', 'Inspect query plans and missing indexes', 'Compare database time with total request time']
-  if (entryDuration(slowest.value) >= 500) return ['Inspect the dominant span', 'Compare with a faster trace', 'Verify downstream and infrastructure timing']
-  return ['Validate the response and correlated side effects', 'Bookmark this trace as a healthy baseline']
+  if (entryDuration(slowest.value) >= 500) return ['Inspect the longest operation', 'Compare with a faster trace', 'Verify downstream and infrastructure timing']
+  return ['Validate the response and linked side effects', 'Bookmark this trace as a healthy baseline']
 })
-const relativePosition = (entry: Entry) => {
-  const first = +new Date(ordered.value[0]?.created_at || 0)
-  const last = Math.max(first + 1, +new Date(ordered.value.at(-1)?.created_at || 0))
-  return Math.max(1, Math.min(97, (+new Date(entry.created_at) - first) / (last - first) * 96))
-}
 </script>
 
 <template>
-  <section class="finding-console" :style="{ '--signal': signalFor(entry.type).color }">
+  <section class="finding-console" :style="{ '--signal': entrySignalColor(entry) }">
     <header class="finding-header">
       <div class="finding-status" :class="`is-${status.tone}`">
         <span><i />{{ status.code }}</span>
@@ -57,19 +54,19 @@ const relativePosition = (entry: Entry) => {
         <h2>{{ finding }}</h2>
       </div>
       <div class="finding-evidence-count">
-        <strong>{{ batch.length }}</strong><span>correlated<br>signals</span>
+        <strong>{{ batch.length }}</strong><span>linked<br>operations</span>
       </div>
     </header>
 
     <div class="finding-body">
       <article class="diagnosis-panel">
-        <header><span>Diagnosis</span><small>deterministic evidence</small></header>
+        <header><span>Diagnosis</span><small>deterministic analysis</small></header>
         <p>{{ diagnosis }}</p>
         <div class="impact-strip">
           <span><small>Errors</small><strong :class="{ danger: errors.length }">{{ errors.length }}</strong></span>
           <span><small>SQL</small><strong>{{ queries.length }}</strong></span>
           <span><small>Entry cost</small><strong>{{ entryDuration(entry) || '—' }}<i v-if="entryDuration(entry)">ms</i></strong></span>
-          <span><small>Dominant</small><strong>{{ slowest ? signalFor(slowest.type).shortLabel : '—' }}</strong></span>
+          <span><small>Longest</small><strong>{{ slowest ? signalFor(slowest.type).shortLabel : '—' }}</strong></span>
         </div>
       </article>
 
@@ -81,25 +78,37 @@ const relativePosition = (entry: Entry) => {
       </article>
     </div>
 
-    <div class="evidence-timeline">
-      <header><span>Correlated evidence</span><small>execution order · marker width indicates relative cost</small></header>
-      <div class="evidence-track">
-        <span class="track-line" />
+    <div class="trace-sequence">
+      <header>
+        <div>
+          <span>Trace sequence</span>
+          <small>Why these operations are grouped</small>
+        </div>
+        <p>They share the same request or batch context. Read left to right to reconstruct the execution, then select any card to inspect its payload.</p>
+      </header>
+      <div class="sequence-rail">
         <button
-          v-for="item in ordered.slice(0, 18)"
+          v-for="(item, index) in ordered.slice(0, 18)"
           :key="item.id"
           :class="{ active: item.id === entry.id, error: isError(item) }"
-          :style="{ '--item': signalFor(item.type).color, left: `${relativePosition(item)}%`, '--cost': `${Math.max(5, entryDuration(item) / maxDuration * 100)}%` }"
-          :title="`${summarize(item)} · ${entryDuration(item) || 0}ms`"
+          :style="{ '--item': entrySignalColor(item), '--cost': `${Math.max(4, entryDuration(item) / maxDuration * 100)}%`, '--sequence-delay': `${index * 45}ms` }"
+          :aria-label="`Inspect ${signalFor(item.type).label}: ${summarize(item)}`"
+          @click="router.push(`/entries/${item.id}`)"
         >
-          <SignalIcon :type="item.type" size="sm" />
-          <b /><span>{{ signalFor(item.type).shortLabel }}</span>
+          <i class="sequence-index">{{ String(index + 1).padStart(2, '0') }}</i>
+          <span class="sequence-icon"><SignalIcon :type="item.type" size="sm" /></span>
+          <span class="sequence-copy">
+            <small>{{ signalFor(item.type).shortLabel }}</small>
+            <strong>{{ summarize(item) }}</strong>
+          </span>
+          <span class="sequence-cost">{{ entryDuration(item) ? `${entryDuration(item)}ms` : 'event' }}</span>
+          <span class="sequence-bar"><i /></span>
         </button>
       </div>
       <footer>
-        <span>trace start</span>
-        <strong v-if="slowest">Dominant evidence · {{ signalFor(slowest.type).label }} · {{ entryDuration(slowest) || 0 }}ms</strong>
-        <span>trace end</span>
+        <span><i /> shared context</span>
+        <strong v-if="slowest">Longest operation: {{ signalFor(slowest.type).label }} · {{ entryDuration(slowest) || 0 }}ms</strong>
+        <span>{{ ordered.length }} total</span>
       </footer>
     </div>
   </section>
