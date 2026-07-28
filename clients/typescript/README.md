@@ -2,6 +2,8 @@
 
 Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 
+**Full docs:** [core/docs/tutorials/custom-events.md](../../core/docs/tutorials/custom-events.md) · [Getting started](../../core/docs/getting-started.md)
+
 ## Install
 
 ```bash

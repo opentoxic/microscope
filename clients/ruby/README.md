@@ -3,6 +3,8 @@
 Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 No dependencies beyond Ruby's standard library.
 
+**Docs:** [Custom events](../../core/docs/tutorials/custom-events.md) · [Getting started](../../core/docs/getting-started.md)
+
 ## Install
 
 ```ruby

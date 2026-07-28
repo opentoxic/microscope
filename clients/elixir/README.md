@@ -2,6 +2,8 @@
 
 Thin HTTP client for the [microscope](https://github.com/opentoxic/microscope) observability API.
 
+**Docs:** [Custom events](../../core/docs/tutorials/custom-events.md) · [Getting started](../../core/docs/getting-started.md)
+
 ## Install
 
 ```elixir
