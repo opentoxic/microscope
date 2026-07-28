@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS microscope_settings (
+    type TEXT PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
