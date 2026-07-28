@@ -54,7 +54,10 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 		return nil, errors.New("microscope: DSN is required")
 	}
 
-	cfg := MergeConfig(ConfigFromEnv(), opts.Config)
+	cfg := ConfigFromEnv()
+	if hasConfigOverride(opts.Config) {
+		cfg = MergeConfig(cfg, opts.Config)
+	}
 
 	integ := NewIntegration(opts.AppEnv, cfg)
 	poolCfg, err := pgxpool.ParseConfig(opts.DSN)

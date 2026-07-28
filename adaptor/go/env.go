@@ -59,6 +59,17 @@ func MergeConfig(base, overrides Config) Config {
 	return out
 }
 
+// hasConfigOverride reports whether opts.Config intentionally overrides defaults.
+func hasConfigOverride(c Config) bool {
+	return c.Path != "" ||
+		c.RetentionHours > 0 ||
+		c.MaxBodyBytes > 0 ||
+		len(c.AllowedEnvs) > 0 ||
+		c.Enabled ||
+		c.AutoMigrate ||
+		c.RedactSensitive
+}
+
 func splitEnvList(v string) []string {
 	parts := strings.Split(v, ",")
 	out := make([]string, 0, len(parts))

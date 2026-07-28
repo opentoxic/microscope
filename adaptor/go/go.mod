@@ -1,4 +1,4 @@
-module github.com/opentoxic/microscope
+module github.com/opentoxic/microscope/adaptor/go
 
 go 1.25.0
 

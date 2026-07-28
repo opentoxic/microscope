@@ -7,7 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/opentoxic/microscope"
+	"github.com/opentoxic/microscope/adaptor/go"
 )
 
 // Up applies embedded microscope migrations idempotently.
