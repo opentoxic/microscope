@@ -6,3 +6,5 @@ core/ui/dist/
 clients/elixir/_build/
 clients/elixir/deps/
 clients/typescript/dist/
+adaptor/php/.phpunit.cache/
+adaptor/php/vendor/
