@@ -7,14 +7,17 @@
   "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/esm/index.d.ts",
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
     "./express": {
+      "types": "./dist/esm/express.d.ts",
       "import": "./dist/esm/express.js",
       "require": "./dist/cjs/express.js"
     },
     "./nestjs": {
+      "types": "./dist/esm/nestjs.d.ts",
       "import": "./dist/esm/nestjs.js",
       "require": "./dist/cjs/nestjs.js"
     }
