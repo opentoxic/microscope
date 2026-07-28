@@ -1,19 +1,31 @@
-.PHONY: build run test ui-install ui-build ui-dev
+.PHONY: sync-core build run test ui-install ui-build ui-dev test-all
 
-build: ui-build
-	go build -o bin/microscope ./cmd/server
+sync-core:
+	sh scripts/sync-core-assets.sh
+
+ui-install:
+	cd core/ui && pnpm install --frozen-lockfile
+
+ui-build: ui-install
+	cd core/ui && pnpm run build
+	$(MAKE) sync-core
+
+ui-dev:
+	cd core/ui && pnpm run dev
+
+build: sync-core
+	cd adaptor/go && go build -o ../../bin/microscope ./cmd/server
 
 run: build
 	./bin/microscope
 
 test:
-	go test ./...
+	cd adaptor/go && go test ./...
 
-ui-install:
-	cd ui && npm ci
+test-php:
+	cd adaptor/php && composer test
 
-ui-build:
-	cd ui && npm run build
+test-python:
+	cd adaptor/python && python -m pytest
 
-ui-dev:
-	cd ui && npm run dev
+test-all: test test-php test-python

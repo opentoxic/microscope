@@ -1,16 +1,21 @@
 FROM node:20-alpine AS ui
-WORKDIR /src/ui
-COPY ui/package.json ui/package-lock.json ./
-RUN npm ci
-COPY ui/ ./
-RUN npm run build
+WORKDIR /src/core/ui
+RUN corepack enable
+COPY core/ui/package.json core/ui/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+COPY core/ui/ ./
+RUN pnpm run build
 
 FROM golang:1.25-alpine AS build
 WORKDIR /src
-COPY go.mod go.sum* ./
+COPY adaptor/go/go.mod adaptor/go/go.sum* ./adaptor/go/
+WORKDIR /src/adaptor/go
 RUN go mod download
-COPY . .
-COPY --from=ui /src/ui/dist ./ui/dist
+WORKDIR /src
+COPY adaptor/go/ ./adaptor/go/
+COPY core/migrations/ ./adaptor/go/migrations/
+COPY --from=ui /src/core/ui/dist ./adaptor/go/ui/dist
+WORKDIR /src/adaptor/go
 RUN go build -o /out/microscope ./cmd/server
 
 FROM alpine:3
