@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/opentoxic/microscope"
+	"github.com/opentoxic/microscope/adaptor/go"
 )
 
 func main() {

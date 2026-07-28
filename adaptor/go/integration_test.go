@@ -39,6 +39,29 @@ func TestConfigFromEnv(t *testing.T) {
 	}
 }
 
+func TestMergeConfigEmptyOverridePreservesEnabled(t *testing.T) {
+	t.Setenv("MICROSCOPE_ENABLED", "true")
+	cfg := ConfigFromEnv()
+	if hasConfigOverride(Config{}) {
+		t.Fatal("empty config should not count as override")
+	}
+	if hasConfigOverride(Config{}) {
+		cfg = MergeConfig(cfg, Config{})
+	}
+	if !cfg.Enabled {
+		t.Fatal("expected enabled preserved when override is empty")
+	}
+}
+
+func TestHasConfigOverride(t *testing.T) {
+	if hasConfigOverride(Config{}) {
+		t.Fatal("empty config is not an override")
+	}
+	if !hasConfigOverride(Config{Path: "/custom"}) {
+		t.Fatal("path should count as override")
+	}
+}
+
 func TestMergeConfig(t *testing.T) {
 	base := ConfigFromEnv()
 	overrides := Config{

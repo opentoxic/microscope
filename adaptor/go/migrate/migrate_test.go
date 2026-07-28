@@ -3,7 +3,7 @@ package migrate_test
 import (
 	"testing"
 
-	msmigrate "github.com/opentoxic/microscope/migrate"
+	msmigrate "github.com/opentoxic/microscope/adaptor/go/migrate"
 )
 
 func TestSource(t *testing.T) {

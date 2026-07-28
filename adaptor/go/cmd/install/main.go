@@ -18,7 +18,7 @@ func main() {
 	dir := flag.String("dir", ".", "target project directory")
 	force := flag.Bool("force", false, "overwrite existing scaffold files")
 	noEnv := flag.Bool("no-env", false, "skip .env.example updates")
-	skipGet := flag.Bool("skip-get", false, "skip go get github.com/opentoxic/microscope")
+	skipGet := flag.Bool("skip-get", false, "skip go get github.com/opentoxic/microscope/adaptor/go@latest")
 	flag.Parse()
 
 	root, err := filepath.Abs(*dir)
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	if !*skipGet {
-		cmd := exec.Command("go", "get", "github.com/opentoxic/microscope@latest")
+		cmd := exec.Command("go", "get", "github.com/opentoxic/microscope/adaptor/go@latest")
 		cmd.Dir = root
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -70,7 +70,7 @@ func main() {
 	fmt.Println("  2. Call internal/microscope.Wire from your app bootstrap")
 	fmt.Println("  3. Run the app and open http://localhost:8080/microscope")
 	fmt.Println()
-	fmt.Println("Docs: https://github.com/opentoxic/microscope/blob/main/docs/go-integration.md")
+	fmt.Println("Docs: https://github.com/opentoxic/microscope/blob/main/core/docs/go-integration.md")
 }
 
 func writeTemplate(name, dest string, force bool) error {
