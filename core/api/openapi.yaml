@@ -1,0 +1,205 @@
+openapi: 3.1.0
+info:
+  title: Microscope API
+  version: 1.0.0
+  description: Development observability API shared by all language adaptors.
+servers:
+  - url: /microscope
+paths:
+  /api/entries:
+    get:
+      summary: List entries
+      parameters:
+        - name: type
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 50 }
+        - name: offset
+          in: query
+          schema: { type: integer, default: 0 }
+      responses:
+        '200':
+          description: Paginated entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListResult'
+    post:
+      summary: Record custom entry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 120 }
+                content: { type: object, additionalProperties: true }
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string }
+  /api/entries/{id}:
+    get:
+      summary: Entry detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Entry detail with batch
+        '404':
+          description: Not found
+  /api/stream:
+    get:
+      summary: Live entry stream (SSE)
+      responses:
+        '200':
+          description: text/event-stream
+  /api/prune:
+    post:
+      summary: Clear all entries
+      responses:
+        '200':
+          description: Prune result
+  /api/storage:
+    get:
+      summary: Storage usage
+      responses:
+        '200':
+          description: Storage stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StorageUsage'
+  /api/recording:
+    get:
+      summary: Recording state
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  paused: { type: boolean }
+    put:
+      summary: Set recording state
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [paused]
+              properties:
+                paused: { type: boolean }
+      responses:
+        '200':
+          description: Updated state
+  /api/redaction:
+    get:
+      summary: Redaction state
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+    put:
+      summary: Set redaction state
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Updated state
+  /api/settings:
+    get:
+      summary: List signal settings
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  settings:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TypeSetting'
+  /api/settings/{type}:
+    put:
+      summary: Enable or disable a signal type
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        '200':
+          description: Updated setting
+components:
+  schemas:
+    Entry:
+      type: object
+      properties:
+        id: { type: string }
+        batch_id: { type: string }
+        type: { type: string }
+        request_id: { type: string }
+        correlation_id: { type: string }
+        tags: { type: array, items: { type: string } }
+        content: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+    ListResult:
+      type: object
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/Entry'
+        total: { type: integer }
+    TypeSetting:
+      type: object
+      properties:
+        type: { type: string }
+        enabled: { type: boolean }
+        count: { type: integer }
+    StorageUsage:
+      type: object
+      properties:
+        entries_mb: { type: number }
+        entries_data_mb: { type: number }
+        entries_indexes_mb: { type: number }
+        settings_mb: { type: number }
+        migrations_mb: { type: number }
+        total_mb: { type: number }
+        entry_count: { type: integer }
