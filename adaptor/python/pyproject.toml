@@ -17,6 +17,7 @@ dev = ["pytest>=8.0", "httpx>=0.27"]
 
 [tool.hatch.build.targets.wheel]
 packages = ["microscope"]
+artifacts = ["microscope/migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
