@@ -176,9 +176,12 @@ const serviceLanguage = computed(() => {
     counts.set(language, (counts.get(language) || 0) + 1)
   }
   const top = [...counts].sort((a, b) => b[1] - a[1])[0]
-  return top?.[0] || 'go'
+  return top?.[0] || 'unknown'
 })
-const serviceLanguageCode = computed(() => LANGUAGE_SHORT_CODES[serviceLanguage.value] || 'GO')
+const serviceLanguageCode = computed(() => {
+  if (serviceLanguage.value === 'unknown') return 'APP'
+  return LANGUAGE_SHORT_CODES[serviceLanguage.value] || 'APP'
+})
 const serviceLanguageColor = computed(() => METRIC_LANGUAGE_COLORS[serviceLanguage.value as keyof typeof METRIC_LANGUAGE_COLORS] || METRIC_LANGUAGE_COLORS.unknown)
 
 const chronological = computed(() => [...props.entries].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)))
