@@ -1,7 +1,7 @@
-FROM node:20-alpine AS ui
+FROM node:22-alpine AS ui
 WORKDIR /src/core/ui
 RUN corepack enable
-COPY core/ui/package.json core/ui/pnpm-lock.yaml ./
+COPY core/ui/package.json core/ui/pnpm-lock.yaml core/ui/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY core/ui/ ./
 RUN pnpm run build
