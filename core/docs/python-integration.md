@@ -47,7 +47,26 @@ export DATABASE_URL=postgres://...
 
 ## ASGI / FastAPI (without Django)
 
-Use the Python package directly — see `adaptor/python/microscope/` for `Setup`, hub, and HTTP handlers. Django is optional convenience.
+Install `adaptor/python` with the `asgi` extra:
+
+```bash
+pip install -e "adaptor/python[asgi]"
+```
+
+Wrap your ASGI app with `MicroscopeASGIMiddleware`:
+
+```python
+from fastapi import FastAPI
+from microscope.asgi import MicroscopeASGIMiddleware
+from microscope.setup import boot_from_env
+
+app = FastAPI()
+app.add_middleware(MicroscopeASGIMiddleware, microscope=boot_from_env())
+```
+
+The middleware records each request/response, samples runtime metrics, and serves the
+dashboard + API under `microscope.config.path_prefix()` — same behavior as the Django
+middleware, framework-agnostic (works for any ASGI app, not just FastAPI).
 
 ## Migrations
 
