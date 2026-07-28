@@ -10,7 +10,7 @@ class Config:
     path: str = "/microscope"
     retention_hours: int = 24
     max_body_bytes: int = 65536
-    allowed_envs: tuple[str, ...] = ("development", "local")
+    allowed_envs: tuple[str, ...] = ("development", "local", "production", "trunk", "staging")
     auto_migrate: bool = True
     redact_sensitive: bool = False
 
@@ -23,7 +23,9 @@ class Config:
             max_body_bytes=int(os.getenv("MICROSCOPE_MAX_BODY_BYTES", "65536")),
             allowed_envs=tuple(
                 e.strip()
-                for e in os.getenv("MICROSCOPE_ALLOWED_ENVS", "development,local").split(",")
+                for e in os.getenv(
+                    "MICROSCOPE_ALLOWED_ENVS", "development,local,production,trunk,staging"
+                ).split(",")
                 if e.strip()
             ),
             auto_migrate=os.getenv("MICROSCOPE_AUTO_MIGRATE", "true").lower() in {"1", "true", "yes"},
