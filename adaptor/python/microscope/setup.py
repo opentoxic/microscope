@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +19,15 @@ _CONNECT_TIMEOUT_SECONDS = 5
 _STATEMENT_TIMEOUT_MS = 5000
 
 _log = logging.getLogger("microscope")
+
+
+def _normalize_dsn(dsn: str) -> str:
+    """Strip SQLAlchemy-style driver suffixes (e.g. postgresql+asyncpg://)
+
+    so the DSN is plain libpq syntax that psycopg understands. Apps commonly
+    export DATABASE_URL in their ORM's dialect, not psycopg's.
+    """
+    return re.sub(r"^(postgres(?:ql)?)\+[^:]+://", r"\1://", dsn)
 
 
 @dataclass
@@ -70,7 +80,7 @@ def boot_from_env(app_env: str | None = None) -> Microscope:
         dsn = os.environ.get("DATABASE_URL", "")
         if not dsn:
             raise ValueError("DATABASE_URL is required")
-        return boot(dsn, app_env or os.environ.get("APP_ENV", "production"))
+        return boot(_normalize_dsn(dsn), app_env or os.environ.get("APP_ENV", "production"))
     except Exception:
         _log.warning("microscope: failed to boot, disabling", exc_info=True)
         return Microscope(hub=None, api=None, spa=None, active=False)
