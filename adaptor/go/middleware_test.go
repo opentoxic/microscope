@@ -119,7 +119,7 @@ func TestHandlerListAndGet(t *testing.T) {
 func TestNotificationRecordsOTPWhenRedactionEnabled(t *testing.T) {
 	store := &memStore{}
 	cfg := DefaultConfig()
-	cfg.RedactSensitive = true
+	cfg.RedactSensitive = BoolPtr(true)
 	hub := NewWithStore(store, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	ctx := WithBatchID(context.Background(), "batch-1")

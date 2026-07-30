@@ -43,7 +43,7 @@ func New(pool *pgxpool.Pool, cfg Config, _ *slog.Logger) *Hub {
 		subscribers:     make(map[chan Entry]struct{}),
 		controlSubs:     make(map[chan ControlEvent]struct{}),
 		enabled:         defaultTypeSettings(),
-		redactSensitive: cfg.RedactSensitive,
+		redactSensitive: BoolValue(cfg.RedactSensitive, false),
 	}
 	h.loadTypeSettings()
 	h.loadRedactionSetting()
@@ -109,7 +109,7 @@ func NewWithStore(store Store, cfg Config, _ *slog.Logger) *Hub {
 		subscribers:     make(map[chan Entry]struct{}),
 		controlSubs:     make(map[chan ControlEvent]struct{}),
 		enabled:         defaultTypeSettings(),
-		redactSensitive: cfg.RedactSensitive,
+		redactSensitive: BoolValue(cfg.RedactSensitive, false),
 	}
 	h.loadTypeSettings()
 	h.loadRedactionSetting()

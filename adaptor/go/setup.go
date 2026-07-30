@@ -93,7 +93,7 @@ func Setup(ctx context.Context, opts SetupOptions) (*SetupResult, error) {
 		return result, nil
 	}
 
-	autoMigrate := cfg.AutoMigrate
+	autoMigrate := BoolValue(cfg.AutoMigrate, true)
 	if opts.AutoMigrate != nil {
 		autoMigrate = *opts.AutoMigrate
 	}

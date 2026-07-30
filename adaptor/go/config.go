@@ -9,8 +9,21 @@ type Config struct {
 	RetentionHours  int
 	MaxBodyBytes    int
 	AllowedEnvs     []string
-	AutoMigrate     bool
-	RedactSensitive bool
+	AutoMigrate     *bool
+	RedactSensitive *bool
+}
+
+// BoolPtr returns a pointer to v.
+func BoolPtr(v bool) *bool {
+	return &v
+}
+
+// BoolValue returns *p when p is non-nil, otherwise defaultVal.
+func BoolValue(p *bool, defaultVal bool) bool {
+	if p == nil {
+		return defaultVal
+	}
+	return *p
 }
 
 // DefaultAllowedEnvs lists app environments where microscope may run.
@@ -26,7 +39,7 @@ func DefaultConfig() Config {
 		RetentionHours: 24,
 		MaxBodyBytes:   65536,
 		AllowedEnvs:    DefaultAllowedEnvs(),
-		AutoMigrate:    true,
+		AutoMigrate:    BoolPtr(true),
 	}
 }
 
