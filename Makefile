@@ -1,5 +1,5 @@
 .PHONY: help install setup doctor env-check \
-        sync-core build run dev \
+        sync-core build run stop dev \
         ui-install ui-build ui-dev ui-lint ui-typecheck \
         test test-php test-python test-all \
         lint fmt fmt-check check ci \
@@ -34,6 +34,7 @@ help: ## Show available targets
 	@echo "Development:"
 	@echo "  make build                Build Go binary with UI assets"
 	@echo "  make run                  Build and run microscope"
+	@echo "  make stop                 Stop server on MICROSCOPE_ADDR port"
 	@echo "  make dev                  Alias for ui-dev"
 	@echo "  make ui-dev               Start UI dev server"
 	@echo "  make ui-build             Build UI and sync core assets"
@@ -151,6 +152,20 @@ run: build ## Build and run microscope
 			exit 1; \
 		fi; \
 		./bin/microscope
+
+stop: ## Stop process listening on MICROSCOPE_ADDR (default :8093)
+	@set -a; \
+		if [ -f .env ]; then \
+			MSYS_NO_PATHCONV=1 . ./.env; \
+		fi; \
+		set +a; \
+		port=$$(echo "$${MICROSCOPE_ADDR:-:8093}" | sed 's/^://'); \
+		pid=$$(netstat -ano 2>/dev/null | grep ":$$port " | grep LISTENING | awk '{print $$NF}' | head -1); \
+		if [ -n "$$pid" ] && [ "$$pid" != "0" ]; then \
+			cmd //c "taskkill /PID $$pid /F" && echo "Stopped PID $$pid on port $$port"; \
+		else \
+			echo "Nothing listening on port $$port"; \
+		fi
 
 # ---------------------------------------------------------------------------
 # Tests
