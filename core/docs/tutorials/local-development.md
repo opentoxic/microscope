@@ -36,7 +36,9 @@ Requires pnpm. See [UI development](ui-development.md).
 ```bash
 export APP_ENV=development
 export MICROSCOPE_ENABLED=true
-export DATABASE_URL=postgres://user:pass@localhost:5432/microscope?sslmode=disable
+export MICROSCOPE_DATABASE_URL=postgres://user:pass@localhost:5432/microscope?sslmode=disable
+
+# Or copy .env.example to .env — make run loads .env automatically.
 
 make run
 ```

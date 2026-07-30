@@ -3,6 +3,7 @@ node_modules/
 **/__pycache__/
 *.tsbuildinfo
 core/ui/dist/
+.env
 clients/elixir/_build/
 clients/elixir/deps/
 clients/typescript/dist/

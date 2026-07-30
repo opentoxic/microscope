@@ -98,7 +98,7 @@ doctor: ## Verify prerequisites
 
 env-check: ## Verify runtime environment
 	@test -n "$$MICROSCOPE_DATABASE_URL" || test -f .env || \
-		(echo "Error: set MICROSCOPE_DATABASE_URL or create .env"; exit 1)
+		(echo "Error: set MICROSCOPE_DATABASE_URL or copy .env.example to .env"; exit 1)
 	@echo "✓ Environment OK"
 
 # ---------------------------------------------------------------------------
@@ -140,8 +140,13 @@ build: sync-core ## Build Go binary with UI assets
 	cd $(GO_DIR) && go build -o ../../bin/microscope ./cmd/server
 	@echo "✓ Binary: bin/microscope"
 
-run: build env-check ## Build and run microscope
-	./bin/microscope
+run: build ## Build and run microscope
+	@set -a; [ -f .env ] && . ./.env; set +a; \
+		if [ -z "$$MICROSCOPE_DATABASE_URL" ]; then \
+			echo "Error: set MICROSCOPE_DATABASE_URL or copy .env.example to .env"; \
+			exit 1; \
+		fi; \
+		./bin/microscope
 
 # ---------------------------------------------------------------------------
 # Tests
