@@ -75,7 +75,7 @@ func TestHubSanitizeMapModes(t *testing.T) {
 	}
 
 	cfg := DefaultConfig()
-	cfg.RedactSensitive = true
+	cfg.RedactSensitive = BoolPtr(true)
 	redactingHub := NewWithStore(store, cfg, nil)
 	redacted := redactingHub.SanitizeMap(input)
 	if redacted["password"] != "[REDACTED]" {
@@ -91,7 +91,7 @@ func TestHubSanitizeOTP(t *testing.T) {
 	}
 
 	cfg := DefaultConfig()
-	cfg.RedactSensitive = true
+	cfg.RedactSensitive = BoolPtr(true)
 	redactingHub := NewWithStore(store, cfg, nil)
 	if redactingHub.SanitizeOTP("123456") != "[REDACTED]" {
 		t.Fatal("expected redacted otp")

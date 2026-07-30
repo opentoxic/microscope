@@ -49,7 +49,7 @@ ms, err := microscope.Setup(ctx, microscope.SetupOptions{
 })
 ```
 
-Only set `Config` fields you intend to override. An empty `Config{}` does not disable `MICROSCOPE_ENABLED` from the environment.
+Only set `Config` fields you intend to override. An empty `Config{}` does not disable `MICROSCOPE_ENABLED` from the environment. For boolean overrides (`AutoMigrate`, `RedactSensitive`), use pointers (e.g. `microscope.BoolPtr(false)`) so unset fields are not applied.
 
 ## Security notes
 

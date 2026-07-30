@@ -30,10 +30,10 @@ func ConfigFromEnv() Config {
 		cfg.AllowedEnvs = splitEnvList(v)
 	}
 	if v := os.Getenv("MICROSCOPE_AUTO_MIGRATE"); v != "" {
-		cfg.AutoMigrate = v == "true" || v == "1"
+		cfg.AutoMigrate = BoolPtr(v == "true" || v == "1")
 	}
 	if v := os.Getenv("MICROSCOPE_REDACT_SENSITIVE"); v != "" {
-		cfg.RedactSensitive = v == "true" || v == "1"
+		cfg.RedactSensitive = BoolPtr(v == "true" || v == "1")
 	}
 	return cfg
 }
@@ -54,8 +54,12 @@ func MergeConfig(base, overrides Config) Config {
 	if len(overrides.AllowedEnvs) > 0 {
 		out.AllowedEnvs = append([]string(nil), overrides.AllowedEnvs...)
 	}
-	out.AutoMigrate = overrides.AutoMigrate
-	out.RedactSensitive = overrides.RedactSensitive
+	if overrides.AutoMigrate != nil {
+		out.AutoMigrate = overrides.AutoMigrate
+	}
+	if overrides.RedactSensitive != nil {
+		out.RedactSensitive = overrides.RedactSensitive
+	}
 	return out
 }
 
@@ -66,8 +70,8 @@ func hasConfigOverride(c Config) bool {
 		c.MaxBodyBytes > 0 ||
 		len(c.AllowedEnvs) > 0 ||
 		c.Enabled ||
-		c.AutoMigrate ||
-		c.RedactSensitive
+		c.AutoMigrate != nil ||
+		c.RedactSensitive != nil
 }
 
 func splitEnvList(v string) []string {

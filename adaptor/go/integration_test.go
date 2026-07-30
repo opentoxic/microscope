@@ -34,7 +34,7 @@ func TestConfigFromEnv(t *testing.T) {
 	if len(cfg.AllowedEnvs) != 2 || cfg.AllowedEnvs[1] != "staging" {
 		t.Fatalf("allowed envs %v", cfg.AllowedEnvs)
 	}
-	if cfg.AutoMigrate {
+	if BoolValue(cfg.AutoMigrate, false) {
 		t.Fatal("expected auto migrate false")
 	}
 }
@@ -76,6 +76,38 @@ func TestMergeConfig(t *testing.T) {
 	}
 	if merged.Path != "/custom" {
 		t.Fatalf("path %q", merged.Path)
+	}
+}
+
+func TestMergeConfigPartialOverridePreservesAutoMigrate(t *testing.T) {
+	base := DefaultConfig()
+	merged := MergeConfig(base, Config{Path: "/custom"})
+	if !BoolValue(merged.AutoMigrate, false) {
+		t.Fatal("expected auto migrate preserved")
+	}
+}
+
+func TestMergeConfigExplicitAutoMigrateFalse(t *testing.T) {
+	base := DefaultConfig()
+	merged := MergeConfig(base, Config{AutoMigrate: BoolPtr(false)})
+	if BoolValue(merged.AutoMigrate, true) {
+		t.Fatal("expected auto migrate false")
+	}
+}
+
+func TestMergeConfigPartialOverridePreservesRedactSensitive(t *testing.T) {
+	base := DefaultConfig()
+	merged := MergeConfig(base, Config{Path: "/custom"})
+	if BoolValue(merged.RedactSensitive, false) {
+		t.Fatal("expected redact sensitive preserved as false")
+	}
+}
+
+func TestMergeConfigExplicitRedactSensitiveTrue(t *testing.T) {
+	base := DefaultConfig()
+	merged := MergeConfig(base, Config{RedactSensitive: BoolPtr(true)})
+	if !BoolValue(merged.RedactSensitive, false) {
+		t.Fatal("expected redact sensitive true")
 	}
 }
 
@@ -162,7 +194,7 @@ func TestIntegrationHTTPMiddlewaresSkipAccessLog(t *testing.T) {
 func TestWrapOTPNotifierRedacts(t *testing.T) {
 	store := &memStore{}
 	cfg := DefaultConfig()
-	cfg.RedactSensitive = true
+	cfg.RedactSensitive = BoolPtr(true)
 	hub := NewWithStore(store, cfg, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	inner := OTPNotifierFunc(func(ctx context.Context, kind, email, otp string) error {
