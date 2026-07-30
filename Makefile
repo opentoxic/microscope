@@ -141,7 +141,11 @@ build: sync-core ## Build Go binary with UI assets
 	@echo "✓ Binary: bin/microscope"
 
 run: build ## Build and run microscope
-	@set -a; [ -f .env ] && . ./.env; set +a; \
+	@set -a; \
+		if [ -f .env ]; then \
+			MSYS_NO_PATHCONV=1 . ./.env; \
+		fi; \
+		set +a; \
 		if [ -z "$$MICROSCOPE_DATABASE_URL" ]; then \
 			echo "Error: set MICROSCOPE_DATABASE_URL or copy .env.example to .env"; \
 			exit 1; \
