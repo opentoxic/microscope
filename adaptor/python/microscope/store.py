@@ -52,6 +52,7 @@ class PostgresStore:
         search: str | None,
         limit: int,
         offset: int,
+        request_id: str | None = None,
     ) -> dict[str, Any]:
         limit = max(1, min(limit or 50, 200))
         where = "WHERE 1=1"
@@ -59,6 +60,9 @@ class PostgresStore:
         if entry_type:
             where += " AND type = %s"
             params.append(entry_type)
+        if request_id:
+            where += " AND request_id = %s"
+            params.append(request_id)
         if search:
             where += " AND (content::text ILIKE %s OR request_id ILIKE %s)"
             params.extend([f"%{search}%", f"%{search}%"])
@@ -83,10 +87,19 @@ class PostgresStore:
             rows = cur.fetchall()
         return [self._map_row(r) for r in rows]
 
+    def prune(self, older_than: datetime) -> int:
+        with self.conn.cursor() as cur:
+            cur.execute("DELETE FROM microscope_entries WHERE created_at < %s", (older_than,))
+            deleted = cur.rowcount
+        self.conn.commit()
+        return deleted
+
     def clear_all(self) -> int:
         with self.conn.cursor() as cur:
             cur.execute("DELETE FROM microscope_entries")
             deleted = cur.rowcount
+        self.conn.commit()
+        with self.conn.cursor() as cur:
             cur.execute("VACUUM FULL ANALYZE microscope_entries")
         self.conn.commit()
         return deleted

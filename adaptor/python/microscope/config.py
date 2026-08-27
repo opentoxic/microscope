@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import re
+from datetime import timedelta
+
 from dataclasses import dataclass
 
 
@@ -38,3 +41,7 @@ class Config:
 
     def is_active(self, app_env: str) -> bool:
         return self.enabled and app_env in self.allowed_envs
+
+    def retention_timedelta(self) -> timedelta:
+        hours = self.retention_hours if self.retention_hours > 0 else 24
+        return timedelta(hours=hours)
