@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+import queue
+import threading
+
 from django.http import HttpRequest, HttpResponse, StreamingHttpResponse
 
-from microscope_django.middleware import get_microscope
+
+def _get_microscope():
+    from microscope_django.middleware import get_microscope
+
+    return get_microscope()
 
 
 def _target_path(request: HttpRequest) -> str:
@@ -13,18 +20,25 @@ def _target_path(request: HttpRequest) -> str:
 
 
 def api_view(request: HttpRequest) -> HttpResponse:
-    microscope = get_microscope()
+    microscope = _get_microscope()
     if not microscope.active:
         return HttpResponse(status=404)
 
+    path = _target_path(request)
+    if path.endswith("/api/stream") and request.method == "GET":
+        return stream_view(request)
+
     result = microscope.handle(
         request.method,
-        _target_path(request),
-        request.body.decode("utf-8"),
+        path,
+        request.body.decode("utf-8", errors="replace"),
         request.META.get("QUERY_STRING", ""),
     )
     if result is None:
         return HttpResponse(status=404)
+
+    if result.get("stream"):
+        return stream_view(request)
 
     body = result.get("body", "")
     if isinstance(body, bytes):
@@ -33,23 +47,43 @@ def api_view(request: HttpRequest) -> HttpResponse:
 
 
 def stream_view(request: HttpRequest) -> HttpResponse:
-    microscope = get_microscope()
+    microscope = _get_microscope()
     if not microscope.active:
         return HttpResponse(status=404)
 
-    def event_stream():
-        yield ""
+    chunks: queue.Queue[str | None] = queue.Queue()
 
-    return StreamingHttpResponse(
-        event_stream(),
+    def write(chunk: str) -> None:
+        chunks.put(chunk)
+
+    def run_stream() -> None:
+        try:
+            microscope.stream(write)
+        finally:
+            chunks.put(None)
+
+    threading.Thread(target=run_stream, daemon=True).start()
+
+    def event_stream():
+        while True:
+            chunk = chunks.get()
+            if chunk is None:
+                break
+            yield chunk
+
+    response = StreamingHttpResponse(
+        streaming_content=event_stream(),
         status=200,
         content_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+    response["Cache-Control"] = "no-cache, no-transform"
+    response["Connection"] = "keep-alive"
+    response["X-Accel-Buffering"] = "no"
+    return response
 
 
 def spa_view(request: HttpRequest) -> HttpResponse:
-    microscope = get_microscope()
+    microscope = _get_microscope()
     if not microscope.active:
         return HttpResponse(status=404)
 
