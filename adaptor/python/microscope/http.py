@@ -2,11 +2,17 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import queue
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs
 
+from microscope.detail import build_entry_detail
+from microscope.entry import ALL_ENTRY_TYPES
 from microscope.hub import Hub
+from microscope.insights import run_insight_analysis
+from microscope.llm_models import list_provider_models
 
 
 class ApiRouter:
@@ -25,6 +31,7 @@ class ApiRouter:
                     params.get("search", [None])[0],
                     int(params.get("limit", ["50"])[0]),
                     int(params.get("offset", ["0"])[0]),
+                    params.get("request_id", [None])[0],
                 ),
             )
 
@@ -39,7 +46,7 @@ class ApiRouter:
             return {"status": 200, "headers": {"Content-Type": "text/event-stream"}, "body": "", "stream": True}
 
         if path == f"{prefix}/api/prune" and method == "POST":
-            deleted = self._hub.store.clear_all()
+            deleted = self._hub.clear_all()
             return self._json(200, {"deleted": deleted})
 
         if path == f"{prefix}/api/storage" and method == "GET":
@@ -64,40 +71,136 @@ class ApiRouter:
             entry_type = path.rsplit("/", 1)[-1]
             return self._update_setting(entry_type, body)
 
+        if path == f"{prefix}/api/insights/analyze" and method == "POST":
+            return self._analyze_insights(body)
+
+        if path == f"{prefix}/api/insights/models" and method == "POST":
+            return self._list_models(body)
+
         return self._json(404, {"error": "not found"})
 
+    def stream(self, write: Callable[[str], None]) -> None:
+        write(": connected\n\n")
+        entries_q, unsub_entries = self._hub.subscribe(64)
+        controls_q, unsub_controls = self._hub.subscribe_control(8)
+        try:
+            heartbeat_at = time.monotonic() + 20
+            while True:
+                try:
+                    control = controls_q.get_nowait()
+                    payload = json.dumps(control)
+                    write(f"event: control\ndata: {payload}\n\n")
+                except queue.Empty:
+                    pass
+
+                timeout = max(0.1, heartbeat_at - time.monotonic())
+                try:
+                    entry = entries_q.get(timeout=timeout)
+                    payload = json.dumps(entry.to_dict())
+                    write(f"id: {entry.id}\nevent: entry\ndata: {payload}\n\n")
+                    heartbeat_at = time.monotonic() + 20
+                except queue.Empty:
+                    write(": heartbeat\n\n")
+                    heartbeat_at = time.monotonic() + 20
+        finally:
+            unsub_entries()
+            unsub_controls()
+
     def _create_custom(self, body: str) -> dict[str, Any]:
-        payload = json.loads(body or "{}")
-        name = payload.get("name")
-        if not isinstance(name, str) or not name.strip():
-            return self._json(400, {"error": "name is required"})
-        entry_id = self._hub.record("custom", {"name": name, **(payload.get("content") or {})})
+        if self._hub.recording_paused():
+            return self._json(409, {"error": "recording is paused"})
+        if not self._hub.type_enabled("custom"):
+            return self._json(409, {"error": "custom events are disabled in settings"})
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "invalid JSON body"})
+        name = str(payload.get("name", "")).strip()
+        if not name or len(name) > 120:
+            return self._json(422, {"error": "name must contain 1 to 120 characters"})
+        content = payload.get("content") if isinstance(payload.get("content"), dict) else {}
+        content = dict(content)
+        content["name"] = name
+        entry_id = self._hub.record("custom", content, tags=["custom:" + name])
         return self._json(202, {"id": entry_id})
 
     def _get_entry(self, entry_id: str) -> dict[str, Any]:
         entry = self._hub.store.get(entry_id)
         if entry is None:
-            return self._json(404, {"error": "not found"})
-        batch = [item.to_dict() for item in self._hub.store.list_by_batch(entry.batch_id)]
-        return self._json(200, {"entry": entry.to_dict(), "batch": batch})
+            return self._json(404, {"error": "entry not found"})
+        batch = self._hub.store.list_by_batch(entry.batch_id)
+        return self._json(200, build_entry_detail(entry, batch))
 
     def _set_recording(self, body: str) -> dict[str, Any]:
-        payload = json.loads(body or "{}")
-        paused = bool(payload.get("paused"))
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "paused must be a boolean"})
+        paused = payload.get("paused")
+        if not isinstance(paused, bool):
+            return self._json(400, {"error": "paused must be a boolean"})
         self._hub.set_recording_paused(paused)
-        return self._json(200, {"paused": paused})
+        return self._json(200, {"paused": self._hub.recording_paused()})
 
     def _set_redaction(self, body: str) -> dict[str, Any]:
-        payload = json.loads(body or "{}")
-        enabled = bool(payload.get("enabled"))
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "enabled must be a boolean"})
+        enabled = payload.get("enabled")
+        if not isinstance(enabled, bool):
+            return self._json(400, {"error": "enabled must be a boolean"})
         self._hub.set_redact_sensitive(enabled)
-        return self._json(200, {"enabled": enabled})
+        return self._json(200, {"enabled": self._hub.redact_sensitive()})
 
     def _update_setting(self, entry_type: str, body: str) -> dict[str, Any]:
-        payload = json.loads(body or "{}")
-        enabled = bool(payload.get("enabled"))
+        if entry_type not in ALL_ENTRY_TYPES:
+            return self._json(404, {"error": "unknown signal type"})
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "enabled must be a boolean"})
+        enabled = payload.get("enabled")
+        if not isinstance(enabled, bool):
+            return self._json(400, {"error": "enabled must be a boolean"})
         deleted = self._hub.set_type_enabled(entry_type, enabled)
         return self._json(200, {"type": entry_type, "enabled": enabled, "deleted": deleted})
+
+    def _analyze_insights(self, body: str) -> dict[str, Any]:
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "invalid JSON body"})
+        provider = str(payload.get("provider", "")).strip().lower()
+        model = str(payload.get("model", "")).strip()
+        api_key = str(payload.get("api_key", "")).strip()
+        entries = payload.get("entries") or []
+        if not provider or not model or not api_key:
+            return self._json(422, {"error": "provider, model, and api_key are required"})
+        if not entries:
+            return self._json(422, {"error": "at least one entry is required"})
+        if len(entries) > 120:
+            payload["entries"] = entries[:120]
+        try:
+            result = run_insight_analysis(payload)
+        except Exception as exc:
+            return self._json(502, {"error": str(exc)})
+        return self._json(200, result)
+
+    def _list_models(self, body: str) -> dict[str, Any]:
+        try:
+            payload = json.loads(body or "{}")
+        except json.JSONDecodeError:
+            return self._json(400, {"error": "invalid JSON body"})
+        provider = str(payload.get("provider", "")).strip().lower()
+        api_key = str(payload.get("api_key", "")).strip()
+        if not provider or not api_key:
+            return self._json(422, {"error": "provider and api_key are required"})
+        try:
+            models = list_provider_models(provider, api_key)
+        except Exception as exc:
+            return self._json(502, {"error": str(exc)})
+        return self._json(200, {"models": models})
 
     @staticmethod
     def _json(status: int, payload: dict[str, Any]) -> dict[str, Any]:

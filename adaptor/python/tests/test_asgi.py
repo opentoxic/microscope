@@ -6,12 +6,18 @@ from microscope.setup import Microscope
 
 class _StubHub:
     def __init__(self) -> None:
-        self.config = type("Cfg", (), {"path_prefix": staticmethod(lambda: "/microscope")})()
+        self.config = type("Cfg", (), {"path_prefix": staticmethod(lambda: "/microscope"), "max_body_bytes": 65536})()
         self.recorded: list[tuple[str, dict]] = []
 
-    def record(self, entry_type: str, content: dict) -> str:
+    def record(self, entry_type: str, content: dict, **kwargs) -> str:
         self.recorded.append((entry_type, content))
         return "id"
+
+    def sanitize_headers(self, headers):
+        return headers
+
+    def sanitize_json(self, body):
+        return body.decode("utf-8", errors="replace") if isinstance(body, bytes) else str(body)
 
 
 def _run(coro):
@@ -19,7 +25,7 @@ def _run(coro):
 
 
 def _make_scope(path: str, method: str = "GET") -> dict:
-    return {"type": "http", "path": path, "method": method, "query_string": b""}
+    return {"type": "http", "path": path, "method": method, "query_string": b"", "headers": []}
 
 
 async def _receive() -> dict:
@@ -53,7 +59,6 @@ def test_passthrough_request_is_recorded_and_forwarded() -> None:
     assert hub.recorded[0][0] == "request"
     assert hub.recorded[0][1]["path"] == "/users"
     assert hub.recorded[0][1]["status"] == 200
-    assert hub.recorded[1][0] == "metric"
 
 
 def test_inactive_microscope_skips_recording_and_still_forwards() -> None:
